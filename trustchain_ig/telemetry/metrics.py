@@ -1,5 +1,5 @@
 from prometheus_client import Counter, Histogram, Gauge, generate_latest
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from typing import Dict
 
 trustchain_calls_total = Counter(
@@ -23,6 +23,12 @@ trustchain_injection_detections = Counter(
 trustchain_hitl_pending = Gauge(
     "trustchain_hitl_pending_count",
     "Number of pending HITL requests"
+)
+
+REQUEST_LATENCY = Histogram(
+    "trustchain_request_latency_seconds",
+    "Proxy request latency",
+    ["method"]
 )
 
 trustchain_proxy_latency = Histogram(

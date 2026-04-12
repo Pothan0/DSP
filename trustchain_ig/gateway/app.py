@@ -18,11 +18,20 @@ from gateway.proxy import get_gateway, MCPGateway, MCPInitializeRequest, MCPTool
 from gateway.session import get_session_manager
 from engines import get_hitl_gate
 from audit import get_audit_store
-from telemetry.metrics import setup_metrics
+from telemetry.metrics import setup_metrics, REQUEST_LATENCY
 from transport.sse import SseProxyTransport
 from transport.stdio import StdioProxyTransport
+import time
 
 app = FastAPI(title="TrustChain MCP Gateway", version="1.0.0")
+
+@app.middleware("http")
+async def add_metrics_middleware(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    REQUEST_LATENCY.labels(method=request.method).observe(process_time)
+    return response
 
 _active_transports: Dict[str, Any] = {}
 _active_queues: Dict[str, asyncio.Queue] = {}
