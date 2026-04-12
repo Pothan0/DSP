@@ -20,11 +20,11 @@ from engines import get_hitl_gate
 from audit import get_audit_store
 from telemetry.metrics import setup_metrics
 from transport.sse import SseProxyTransport
-
+from transport.stdio import StdioProxyTransport
 
 app = FastAPI(title="TrustChain MCP Gateway", version="1.0.0")
 
-_active_transports: Dict[str, SseProxyTransport] = {}
+_active_transports: Dict[str, Any] = {}
 
 
 class JSONRPCRequest(BaseModel):
@@ -62,12 +62,17 @@ async def mcp_sse(server_id: str, request: Request):
 
     session_id = get_client_session_id(request)
     
-    # URL might just be http://localhost:8000, we append /sse for the spec.
-    # If the user put the full SSE url, we just use it.
-    base_url = server_conf.url
-    sse_url = base_url if base_url.endswith("/sse") else f"{base_url.rstrip('/')}/sse"
+    if server_conf.command:
+        transport = StdioProxyTransport(server_conf.command, server_conf.args or [])
+    elif server_conf.url:
+        # URL might just be http://localhost:8000, we append /sse for the spec.
+        # If the user put the full SSE url, we just use it.
+        base_url = server_conf.url
+        sse_url = base_url if base_url.endswith("/sse") else f"{base_url.rstrip('/')}/sse"
+        transport = SseProxyTransport(sse_url)
+    else:
+        raise HTTPException(status_code=400, detail=f"Server '{server_id}' has neither command nor url configured")
 
-    transport = SseProxyTransport(sse_url)
     await transport.start()
     _active_transports[session_id] = transport
 
