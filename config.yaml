@@ -1,0 +1,4 @@
+servers:
+  math:
+    command: python
+    args: ["math_tool.py"]
