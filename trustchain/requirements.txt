@@ -1,0 +1,7 @@
+sentence-transformers
+numpy
+scikit-learn
+fastapi
+uvicorn
+websockets
+jinja2

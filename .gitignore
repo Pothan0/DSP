@@ -1,0 +1,29 @@
+# Environments
+venv/
+.env
+.venv
+env/
+ENV/
+bin/
+lib/
+include/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Local Database & Logs
+sentricore.db
+sentricore.db-journal
+*.log
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Streamlit
+.streamlit/

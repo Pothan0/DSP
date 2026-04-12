@@ -1,0 +1,97 @@
+# TrustChain Configuration
+# All values can be overridden via environment variables: TRUSTCHAIN_<SECTION>_<KEY>
+
+tools:
+  # Low risk - always allowed
+  read_file:
+    tier: low
+  list_directory:
+    tier: low
+  get_info:
+    tier: low
+  search:
+    tier: low
+  
+  # Medium risk - requires valid session token
+  search_database:
+    tier: medium
+  query_api:
+    tier: medium
+  send_notification:
+    tier: medium
+  
+  # High risk - requires task-scoped token
+  write_file:
+    tier: high
+    max_calls: 3
+  update_database:
+    tier: high
+    max_calls: 5
+  create_resource:
+    tier: high
+    max_calls: 10
+  
+  # Critical risk - requires HITL approval every time
+  execute_code:
+    tier: critical
+    requires_hitl: true
+  delete_resource:
+    tier: critical
+    requires_hitl: true
+  send_email:
+    tier: critical
+    requires_hitl: true
+  drop_database:
+    tier: critical
+    requires_hitl: true
+  exec_shell:
+    tier: critical
+    requires_hitl: true
+
+trust:
+  initial_score: 1.0
+  decay_threshold: 0.4
+  termination_threshold: 0.2
+  score_deltas:
+    clean_call: 0.02
+    signature_match: -0.25
+    embedding_drift: -0.15
+    hitl_reject: -0.40
+    hitl_approve: 0.05
+    unauthorized_tool: -0.30
+    cross_session_pattern: -0.20
+  decay_rate_per_minute: 0.01
+
+injection:
+  embedding_model: "all-MiniLM-L6-v2"
+  similarity_threshold: 0.30
+  embedding_window_size: 30
+  use_llm_judge: false
+  llm_judge_model: null
+
+mcp:
+  host: "0.0.0.0"
+  port: 7070
+  transport: "streamable-http"
+  upstream_servers:
+    - url: "http://localhost:8080/mcp"
+      name: "internal-tools"
+      enabled: true
+      timeout: 30
+
+hitl:
+  enabled: true
+  timeout_seconds: 300
+  timeout_policy: "auto_reject"
+
+telemetry:
+  log_level: "INFO"
+  otel_enabled: false
+  otel_endpoint: null
+  prometheus_enabled: true
+  prometheus_port: 9090
+
+audit:
+  backend: "sqlite"
+  database_url: "trustchain_audit.db"
+  retention_days: 90

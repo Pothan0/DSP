@@ -1,0 +1,482 @@
+
+
+--- FILE: C:\Users\sarag\Downloads\DSP_Assignment_23bds003.docx ---
+
+Data Security & Privacy - Assignment
+Name: Meghavath Likhith Naik
+Roll No.: 23BDS034
+Q1. What is Symmetric Key Encryption?
+Symmetric key encryption is a method where a single shared secret key handles both encryption and decryption. Think of it like a combination lock: only one combination exists, and whoever knows it can both lock and unlock it.
+In practice, the sender and the receiver must each possess an identical copy of this key. Data encrypted with it becomes unreadable ciphertext, and only the same key can reverse that transformation.
+The Process Step by Step:
+Key Generation: A cryptographically strong random key is produced.
+Plaintext Preparation: The message to protect is passed to an encryption algorithm (e.g., AES).
+Encryption: The algorithm scrambles the plaintext into ciphertext using the key.
+Transmission: The ciphertext travels across the network. Even if intercepted, it is meaningless without the key.
+Decryption: The recipient uses the same key to reverse the transformation and recover the original plaintext.
+Q2. What are the Different Ways of Symmetric Encryption?
+The variation in symmetric encryption largely comes down to Modes of Operation — these specify how a block cipher (like AES) is applied to data that spans multiple blocks.
+Mode
+Description
+Security Level
+ECB (Electronic Codebook)
+Each block is encrypted independently, with no relationship to other blocks.
+Very Weak — identical plaintext blocks produce identical ciphertext, making patterns visible.
+CBC (Cipher Block Chaining)
+Each block is XORed with the previous ciphertext block before being encrypted, creating a dependency chain.
+Good — but susceptible to padding oracle attacks if not implemented carefully.
+GCM (Galois/Counter Mode)
+Combines counter-mode encryption with a Galois field MAC, providing both confidentiality and data integrity verification.
+Best Practice — authenticated, fast, and parallelisable.
+Q3. Asymmetric Encryption: Keys, Methods, and Best Security
+Asymmetric encryption uses a mathematically paired key-pair per entity. These keys serve two distinct purposes:
+Confidentiality (Encryption): To send a message only Person B can read, encrypt it using Person B's Public Key (Public B). Only their Private Key (Private B) can decrypt it.
+Authentication (Digital Signing): To prove a message came from you, sign it with your Private Key (Private A). Anyone holding your Public Key (Public A) can verify the signature is genuine.
+The strongest security model combines both: Hybrid Encryption uses asymmetric encryption to securely exchange a symmetric session key, then uses that key (e.g., AES-GCM) to encrypt the actual data. This gives the scalability of public-key infrastructure and the speed of symmetric encryption.
+Example Python Code (Symmetric Encryption — AES-GCM):
+Q4.
+Write the sequence of how to launch man-in-the-middle attack where both users have public key and private key
+When both parties hold key pairs, a MitM attack — also called a Key Substitution Attack — exploits the window before authenticated key exchange occurs. Mallory, the attacker, positions herself between Alice and Bob.
+The Attack Sequence:
+Intercept Alice's Key: Alice sends Public Key (A) to Bob. Mallory silently captures it.
+First Substitution: Mallory sends her own Public Key (M) to Bob while impersonating Alice.
+Intercept Bob's Key: Bob, thinking he is talking to Alice, sends his Public Key (B). Mallory captures this too.
+Second Substitution: Mallory sends Public Key (M) to Alice while impersonating Bob.
+Dual Tunnels Established: Alice encrypts for what she believes is Bob — Mallory decrypts, reads or tampers with the message, re-encrypts it with Bob's real key, and forwards it. Bob receives messages that appear to come directly from Alice.
+Q5. Man-in-the-Middle Attack Sequence (Key Substitution Attack)
+Where Alice and Bob both possess public/private key pairs, an attacker can intercept their initial key exchange before trust is established. Mallory positions herself as a relay between them.
+Intercept Alice's Request: Alice transmits Public Key (A) toward Bob. Mallory captures and stores it silently.
+The Key Substitution: Mallory forwards her own Public Key (M) to Bob, posing as Alice.
+Intercept Bob's Response: Bob sends his Public Key (B) back. Mallory intercepts this as well.
+Second Substitution: Mallory delivers Public Key (M) to Alice, this time impersonating Bob.
+Active Interception: Both Alice and Bob communicate through Mallory without realising it. She can read, alter, and relay all messages in real time.
+Q5. NIST Approved Pseudo-Random Number Generator Standards SP800/90A, 90B, 90C
+SP 800-90A: Defines the Deterministic Random Bit Generator (DRBG) algorithms. Starting from a small entropy seed, these constructions — HMAC-DRBG, Hash-DRBG, and CTR-DRBG (AES-based) — produce a long, cryptographically unpredictable bitstream.
+SP 800-90B: Governs the Entropy Source that seeds a DRBG. It establishes requirements for hardware-based physical processes — thermal noise, clock jitter, etc.
+— that supply genuine, measurable randomness.
+SP 800-90C: The Construction standard. It describes how to correctly assemble an approved entropy source (90B) with an approved DRBG (90A) to form a complete, validated random number generation system.
+Q6. Symmetric Key Based Distribution KDC – What Type of Key Does it Generate?
+Distributing a unique secret key between every pair of users in a large network quickly becomes unmanageable. A Key Distribution Center (KDC) resolves this by acting as a trusted intermediary that generates keys on demand.
+The KDC generates Session Keys.
+Definition: A session key is a temporary, symmetric key scoped to exactly one communication session between two parties, then discarded when that session ends.
+How it works:
+Alice contacts the KDC to request a channel to Bob.
+The KDC verifies both parties using their pre-shared long-term master keys.
+The KDC generates a fresh, random session key.
+Each party receives a copy of the session key, encrypted under their own master key.
+At session end, both parties permanently discard the session key.
+The security advantage: if an attacker ever obtains a session key, the exposure is limited to that single conversation. All past and future communications remain protected.
+Q7. What does a Control Vector look like?
+In high-assurance cryptographic hardware (such as IBM Cryptographic Coprocessors), a Control Vector (CV) is a structured bit-field that is cryptographically bound to a key at creation time. It encodes and enforces the permitted uses of that key at the hardware level.
+A useful mental model: it is a tamper-evident, mathematically embedded policy label that reads something like: "This key may only be used for PIN encryption and is not exportable."
+Logical Structure (typically 128 bits for AES keys):
+Key Type: Identifies the key's role — Data Key, Key-Encrypting Key, Master Key, etc.
+Exportability Flag: Specifies whether the key may be transmitted outside the hardware boundary.
+Usage Permission Bits: Defines the permitted operations: Encrypt, Decrypt, Sign, or Verify.
+The CV is bound to the key through XOR:
+Effective Key = Master Key XOR Control Vector
+Because this XOR is baked into the key derivation, the hardware is physically incapable of using the key outside its authorised scope — any attempt produces a cryptographic failure.
+Q8. Mutual authentication scheme using symmetric encryption
+Mutual authentication ensures that both Alice and Bob verify each other's identity before exchanging data. With symmetric encryption, this is achieved through a Challenge-Response protocol where each party proves possession of the shared secret key K_AB.
+The Protocol (Three-Step Handshake):
+Alice → Bob: "I am Alice. Here is my challenge nonce R_A."
+Bob → Alice: "Here is my own challenge R_B, and here is your R_A encrypted under our shared key: E_K[R_A]." Alice decrypts and confirms R_A matches — only Bob could have produced this, so Alice now trusts Bob.
+Alice → Bob: "Confirmed. Here is your R_B encrypted: E_K[R_B]." Bob decrypts and confirms R_B — only Alice could have produced this, so Bob now trusts Alice.
+Neither side can complete the handshake without K_AB, establishing mutual trust without ever transmitting the key over the network.
+Q9. One way authentication using Symmetric encryption
+One-way authentication is used when only one party needs to prove its identity — typically in client-server architectures where the client must confirm the server is genuine before transmitting sensitive information.
+The Protocol:
+Client → Server: Transmits a Nonce R_C — a random value used exactly once.
+Server → Client: Returns the nonce encrypted under the shared secret key: E_K[R_C].
+Client Verification: The client decrypts the response. If the result matches R_C, the server has demonstrated it holds the shared key — and is therefore authentic.
+Inherent Risk: One-way authentication is highly vulnerable to Replay Attacks. An attacker who captures E_K[R_C] could replay it in a future session to impersonate the server. Fresh nonces per session prevent this by ensuring captured responses cannot be reused.
+Q10. Research about Federated identity management (how apps really authorize, do they actually stay in the limits, how they work in the backend)
+Federated Identity Management (FIM) is a trust framework that lets a user authenticate once with a trusted Identity Provider (IdP) — Google, Okta, etc. — and gain access to resources hosted by multiple Service Providers (SPs) without re-authenticating.
+How Applications Actually Authorise
+Modern apps implement OIDC (OpenID Connect) layered on top of OAuth 2.0:
+Authentication vs. Authorisation: OAuth 2.0 governs what data an application may access. OIDC adds an ID Token (a signed JWT) that identifies who the authenticated user is.
+The Back-Channel Handshake: After the user logs in at the IdP, the browser receives only a short-lived authorization code. The application's backend server then makes a direct server-to-server HTTPS call to the IdP, exchanging that code plus its own client secret for a real access token. This "back channel" exchange never passes through the browser, protecting the token from interception.
+Do Applications Stay Within Their Limits?
+Enforcement is handled through Scopes and Claims:
+In Theory: The app declares the scopes it needs at request time. The IdP presents a consent screen, and if approved, the access token is cryptographically bound to only those scopes.
+In Reality: Limits only hold if the Resource Server rigorously validates scopes on every API request. A user who blindly approves an admin scope grants full administrative access to that application. The boundaries are enforced by policy discipline — not automatic technical barriers.
+Q11. Get a software security solution and describe what needs to be understood about it, including the purpose for which the product is built, how it communicates with external entities, and its deeper vulnerabilities.
+Solution: HashiCorp Vault
+Vault addresses the "secret zero" problem: how do you securely manage the credentials needed to access your other secure systems? It provides centralised secrets storage, dynamic credential generation (e.g., database passwords that auto-expire after 30 minutes), and encryption-as-a-service.
+How Vault Communicates
+API-First Design: Every Vault operation — reading secrets, issuing credentials, managing policies — is an authenticated REST API call.
+Transport Security: All client-to-Vault traffic is TLS-encrypted. Data persisted to the backend (Consul, disk, etc.) is encrypted at rest using AES-256-GCM, so the storage layer itself holds no plaintext.
+Authentication Integration: Vault delegates identity verification to external providers —
+LDAP, OIDC, AWS IAM — rather than maintaining its own user database.
+Deeper Vulnerabilities
+Vault's weaknesses are rarely memory-safety bugs — they tend to be logic flaws and operational mistakes:
+Authentication Logic Flaws: CVEs such as CVE-2025-6004 demonstrate that subtle issues — case-insensitive input normalization — allowed attackers to bypass lockout thresholds and brute-force authentication endpoints.
+Unseal Key Mismanagement: Vault requires an unseal operation after every restart to decrypt its internal master key. If the unseal keys are stored in plaintext files or managed carelessly, a single breach exposes the entire secrets store.
+Audit Log Tampering: A sufficiently privileged attacker may disable or manipulate audit devices, eliminating evidence of secret access and severely hampering incident response.
+Q12. Secure boot options in Linux OS or embedded Systems.
+Secure Boot establishes a Chain of Trust from silicon to user space. Its goal is to guarantee that every component executing during startup has been cryptographically signed by a trusted preceding stage — no unsigned code runs.
+The Chain:
+Hardware Root of Trust: The CPU or SoC contains a manufacturer's public key in ROM or eFuses. This is the immutable anchor the entire chain depends on.
+Firmware / UEFI: The hardware verifies the UEFI firmware's signature against the RoT public key before any code executes.
+Shim: A Microsoft-signed bootloader that bridges UEFI Secure Boot to the Linux ecosystem, allowing distros to participate without requiring their individual keys in firmware. UEFI verifies Shim.
+Bootloader (GRUB): Shim verifies GRUB's cryptographic signature before handing over execution.
+Kernel: GRUB verifies the Linux kernel image signature before booting it.
+User Space (dm-verity): Extends the trust chain to the filesystem. Every block read from the root partition is verified against a Merkle-like hash tree before the OS consumes it.
+Why It Matters: A bootkit planted on the drive will have an invalid signature. Secure Boot detects the mismatch and refuses to proceed — converting what could be a silent full-system compromise into a visible, contained boot failure.
+Q13. Explain the properties of zero trust architecture for any system
+Zero Trust is built on a single principle: "Never trust, always verify." Physical or logical network location grants no implicit access to any resource.
+Core Properties:
+Micro-Segmentation: Trust boundaries are drawn around individual workloads, not broad network zones. A compromised web server has no inherent ability to reach the database — each cross-service request must be independently authorised.
+Continuous Verification: Authentication is not a one-time gate at login. Every request
+— including internal service-to-service calls — is authenticated and authorised in real time.
+Least Privilege: Users and services receive only the minimum permissions required for their specific task, scoped to the duration of that task. Broad, persistent permissions are eliminated.
+Contextual Awareness: Access decisions incorporate device health (patch level, endpoint protection status), user location, and behavioural baselines — not merely valid credentials.
+Q14. What are Merkle trees (how are they used practically for verifying integrity purposes)
+A Merkle Tree is a hierarchical cryptographic data structure. Each leaf node stores the hash of a data block; each internal node stores the hash of its children. This produces a single Root Hash that represents the integrity fingerprint of the entire dataset.
+Practical Integrity Verification:
+The power of Merkle Trees is targeted, efficient verification. Changing even a single bit at any leaf invalidates that leaf's hash, which propagates upward through every ancestor to alter the Root Hash. To verify one specific piece of data, you only need to check the O(log n) nodes along the path from that leaf to the root — you do not need to re-hash the full dataset.
+Hardware and Firmware Applications:
+TPM (Trusted Platform Module): A dedicated security chip that records cryptographic measurements (hashes) of firmware and bootloaders into tamper-resistant registers, enabling remote attestation.
+Intel Boot Guard / AMD Hardware Validated Boot: Verify BIOS/UEFI integrity at the silicon level before the CPU executes a single instruction.
+dm-verity (Linux Kernel): Uses a Merkle-tree hash structure over the read-only root filesystem. Every disk block is verified against the tree on each read, detecting runtime tampering immediately.
+Q15. One use case of STRIDE
+STRIDE is a threat modelling framework developed by Microsoft. Applied to a Smart Connected Thermostat communicating with a cloud API:
+Threat
+Description
+Example for Smart Thermostat
+Spoofing
+Falsely assuming another entity's identity.
+An attacker clones a legitimate device ID to inject fake temperature readings into the cloud backend.
+Tampering
+Unauthorised modification of data in transit or storage.
+Intercepting and modifying the target-temperature command packet as it travels to the cloud.
+Repudiation
+Denying that an action took place.
+A user changes their schedule settings and later claims they never did so — no audit logs exist to prove otherwise.
+Information Disclosure
+Unintended exposure of sensitive data.
+The device transmits home occupancy patterns or Wi-Fi credentials without encryption.
+Denial of Service
+Disrupting system availability.
+Flooding the thermostat's local API until it crashes or depletes its battery.
+Elevation of Privilege
+Gaining higher access than authorised.
+Exploiting a firmware vulnerability to obtain root- level OS access on the device.
+Mitigations map directly to each threat: Spoofing is countered by mutual TLS (mTLS) with per- device certificates; Tampering by signed firmware updates and message authentication codes;
+Information Disclosure by enforcing TLS on all API traffic; Elevation of Privilege by secure boot and signed OTA updates.
+Q16. NAC – How authentication server works.
+Network Access Control (NAC) is the security checkpoint for network entry. Every device must prove its identity and demonstrate it meets security posture requirements before being granted access to internal resources.
+The Three-Component IEEE 802.1X Model:
+The Supplicant: The end device (laptop, phone, IoT sensor) trying to join the network. It runs an 802.1X client that initiates the authentication exchange with the connected switch.
+The Authenticator: The network switch or wireless access point. It does not make access decisions itself — it keeps the port locked and relays credential exchanges between the supplicant and the authentication server.
+The Authentication Server (RADIUS/NAC Engine): The decision-making core. It receives the forwarded credentials, queries the identity backend (LDAP, Active Directory, SQL), evaluates device posture (antivirus currency, OS patch level), and instructs the switch to either open or deny the port — along with policy attributes such as VLAN assignment and bandwidth limits.
+The server does not simply grant or deny; it shapes the network experience by returning enforcement attributes that the switch applies automatically for the duration of the session.
+Q17. Free radius (tool) How it works? How to configure? What software and hardware are needed?
+FreeRADIUS is the world's most widely deployed open-source RADIUS server, implementing the AAA (Authentication, Authorisation, Accounting) framework for network access control.
+The AAA Framework:
+Authentication: Validates identity by verifying credentials — username/password combinations, digital certificates, or one-time passwords — against a backend store.
+Authorisation: Determines permitted actions by returning policy attributes (VLAN-ID, Filter-Id, bandwidth cap) to the authenticator.
+Accounting: Records session lifecycle events — start, stop, and interim updates —
+capturing duration and data volume for billing or security auditing.
+Configuration (Directory-Driven Structure):
+clients.conf: Registers each authenticator (switch or AP) by IP address and a Shared Secret — the password used to authenticate RADIUS traffic between the device and the server.
+users file / Database backend: Holds user credentials. In production, FreeRADIUS is pointed at a MySQL or PostgreSQL database, or an LDAP/Active Directory server, rather than the local flat file.
+sites-enabled/default: The processing pipeline. This file defines the ordered sequence in which modules are evaluated — check local users first, then query the SQL backend, reject if not found — and allows per-site customisation of authentication logic.
+Hardware and Software Requirements:
+Operating System: Any mainstream Linux distribution (Ubuntu, Debian, CentOS, RHEL) — available via standard package managers.
+Key Dependencies: libfreeradius-dev, freeradius-utils. For database backends: mysql- server or postgresql. Diagnostic tools: radtest for sending test authentication packets and raddebug for live packet tracing.
+Hardware Footprint: Minimal. FreeRADIUS is extremely lightweight — a Raspberry Pi is sufficient for lab use; a VM with 1 vCPU and 2 GB RAM handles mid-enterprise load. The typical bottleneck is network latency between the server and authenticator, not CPU.
+
+
+--- FILE: C:\Users\sarag\Downloads\DSP_assignment_23BDS051.docx ---
+
+DSP Assignment         Manasa Saragalla(23bds051)
+Q1.  Symmetric Key Encryption
+Symmetric encryption uses a single shared key for both encryption and decryption. Both parties must have the same key before communicating — this is what makes key distribution its biggest challenge.
+Steps in the Process
+Key Generation — A random secret key is generated (e.g., AES-256 = 256-bit key).
+Key Sharing — The key is securely distributed to both parties (via Diffie-Hellman, KDC, or a pre-shared channel).
+Encryption — The sender runs plaintext + key through the algorithm to produce ciphertext.
+Transmission — Ciphertext travels over the network; useless without the key.
+Decryption — The receiver runs ciphertext + same key through the reverse operation to recover plaintext.
+Q2.  Types / Ways of Symmetric Encryption
+Block Ciphers — Process Fixed-Size Chunks
+AES (Advanced Encryption Standard) — 128-bit blocks, 128/192/256-bit keys. The global standard today. Used in TLS, disk encryption, VPNs.
+DES — 56-bit key. Obsolete and broken. Included only historically.
+3DES — Applies DES three times. Stronger than DES but slow; being retired.
+Blowfish/Twofish — Variable key length up to 448 bits. Used in legacy systems and bcrypt password hashing.
+Stream Ciphers — Encrypt Bit-by-Bit
+ChaCha20 — Modern, fast, used in TLS 1.3 and WireGuard VPN. Preferred for mobile hardware without AES acceleration.
+RC4 — Deprecated due to statistical weaknesses. Avoid.
+Modes of Operation (How Block Ciphers Are Applied)
+ECB — Each block encrypted independently. Never use — identical inputs give identical outputs, leaking patterns.
+CBC — Each block is XOR'd with the previous ciphertext before encrypting. Needs an IV. Common but not parallelizable.
+CTR — Uses a counter as input. Fast and parallelizable. Widely used.
+GCM — CTR + authentication tag. Encrypts AND verifies integrity. Used in TLS 1.2/1.3.
+Q3.  Key Pair Combinations — Encryption & Best Security
+With Alice (Private A, Public A) and Bob (Private B, Public B), the meaningful combinations are:
+#
+Encrypt With
+Decrypt With
+Purpose
+Security
+1
+Public B
+Private B
+Confidentiality — only Bob reads it
+Medium
+2
+Private A
+Public A
+Authentication — proves Alice sent it
+Low (no secrecy)
+3
+Public A
+Private A
+Message for Alice only
+Medium
+4
+Private B
+Public B
+Bob signs, anyone verifies
+Low (no secrecy)
+5 ★
+Private A + Encrypt w/ Public B
+Private B + Verify w/ Public A
+Sign-then-Encrypt — Confidentiality + Auth + Non-repudiation
+BEST
+Python Demo — Combination 5 (Sign-then-Encrypt)
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+# Generate key pairs
+priv_A = rsa.generate_private_key(65537, 2048, default_backend())
+pub_A  = priv_A.public_key()
+priv_B = rsa.generate_private_key(65537, 2048, default_backend())
+pub_B  = priv_B.public_key()
+msg = b'Hello Bob, this is Alice!'
+# Alice signs with her Private Key
+sig = priv_A.sign(msg, padding.PSS(padding.MGF1(hashes.SHA256()),
+                  padding.PSS.MAX_LENGTH), hashes.SHA256())
+# Alice encrypts with Bob's Public Key
+cipher = pub_B.encrypt(msg, padding.OAEP(padding.MGF1(hashes.SHA256()),
+                       hashes.SHA256(), None))
+# Bob decrypts with his Private Key, verifies with Alice's Public Key
+plain = priv_B.decrypt(cipher, padding.OAEP(padding.MGF1(hashes.SHA256()),
+                       hashes.SHA256(), None))
+pub_A.verify(sig, plain, padding.PSS(padding.MGF1(hashes.SHA256()),
+             padding.PSS.MAX_LENGTH), hashes.SHA256())
+print('Decrypted:', plain)  # => b'Hello Bob, this is Alice!'
+print('Signature valid — Alice confirmed, message untampered.')
+Q4.  Man-in-the-Middle (MITM) Attack — Step-by-Step
+A MITM attack lets an attacker silently intercept and modify communication between two parties who believe they're talking directly to each other. Here's how it unfolds when both users have key pairs:
+Step 1 — Positioning: Eve places herself between Alice and Bob using ARP poisoning, DNS spoofing, or a rogue Wi-Fi hotspot. All traffic now routes through Eve.
+Step 2 — Key Interception: When Alice sends her Public Key to Bob, Eve intercepts it and substitutes her own public key. She does the same when Bob sends his.
+Step 3 — Dual Identity: Alice now thinks she has Bob's key (she has Eve's). Bob thinks he has Alice's key (he has Eve's). Eve holds both real keys.
+Step 4 — Transparent Relay: Alice encrypts with Eve's key → Eve decrypts, reads/modifies → re-encrypts with Bob's real key → Bob receives it normally. Neither side suspects anything.
+Q5.  NIST PRNG Standards — SP 800-90A / 90B / 90C
+Cryptography depends on unpredictable random numbers. NIST's SP 800-90 series defines how to generate them securely.
+SP 800-90A — Deterministic RBGs (DRBGs)
+Defines algorithms that produce random bits from a seed. Three approved mechanisms:
+Hash_DRBG — Based on SHA-2 hash functions. Simple, widely supported.
+HMAC_DRBG — Uses HMAC. Most robust; recommended for general use (used in TLS, FIPS modules).
+CTR_DRBG — Uses AES in counter mode. Fast on hardware with AES-NI. Common in HSMs.
+Note: Dual_EC_DRBG was removed from SP 800-90A after suspected NSA backdoor — a selected curve constant may have allowed secret prediction of outputs.
+SP 800-90B — Entropy Sources
+Defines requirements for the physical entropy that seeds a DRBG — thermal noise, ring oscillators, shot noise. Mandates continuous health tests (e.g., repetition count test) and entropy estimation to ensure the source is genuinely unpredictable.
+SP 800-90C — Full PRNG Construction
+Specifies how to combine a 90B entropy source with a 90A DRBG into a complete, secure system. Covers seeding, reseeding intervals, and prediction resistance (refreshing entropy before each use so even a leaked internal state can't predict future outputs).
+Q6.  KDC-Based Symmetric Key Distribution
+A Key Distribution Center (KDC) is a trusted third party that handles key sharing so users don't need to pre-share keys with everyone directly. Each user only shares one long-term key with the KDC.
+How It Works
+Each user pre-shares a Master Key (Key-Encrypting Key / KEK) with the KDC only.
+When Alice wants to talk to Bob, she requests a Session Key from the KDC.
+The KDC generates a fresh, random Session Key and sends Alice's copy encrypted with her master key, and Bob's copy encrypted with his master key (a 'ticket').
+Alice decrypts her portion; sends Bob his ticket. Bob decrypts it. Both now share the session key — without ever exchanging it directly.
+Types of Keys Generated
+Session Keys — Short-lived, one per communication session. Used for actual data encryption.
+Master Keys (KEKs) — Long-term keys between each user and the KDC. Used only to protect session key delivery, never for data.
+Q7.  Control Vectors — What They Look Like
+A control vector (CV) is a structured bit-string cryptographically bound to a key to enforce what that key is allowed to do. Developed by IBM for their Common Cryptographic Architecture (CCA). It's typically 8 or 16 bytes long.
+Structure — Each Bit Has a Defined Meaning
+Field
+Value Example
+Meaning
+Key Type
+0000 = DES, 0001 = AES
+What algorithm this key is for
+Usage Bits
+Encrypt=1, Decrypt=0
+Allowed operations: encrypt, decrypt, MAC, wrap/unwrap
+Export Control
+1 = Exportable
+Whether key can leave the cryptographic module
+Cipher Mode
+CBC, GCM, CTR
+Which modes the key is permitted to use
+Direction
+Send / Receive
+For session keys — inbound or outbound only
+Key Check Value
+3-byte checksum
+Verify key integrity without exposing the key itself
+The control vector is XOR'd with the Key-Encrypting Key before the key is stored. If someone tries to use the key for an unauthorized purpose (e.g., using a MAC key for encryption), the derived KEK is wrong and the operation fails — policy is enforced in hardware automatically.
+Q8.  Mutual Authentication Using Symmetric Encryption
+Mutual authentication means both parties prove their identity to each other — neither trusts the other by default. It uses challenge-response with a shared key.
+Protocol (Needham-Schroeder Simplified)
+Alice → Bob: [Alice_ID, Nonce_A]  (Alice introduces herself with a random nonce)
+Bob → Alice: Encrypt_K { Nonce_A, Nonce_B }  (Bob proves he knows key K by encrypting Alice's nonce; adds his own)
+Alice checks Nonce_A — Bob is verified. Alice → Bob: Encrypt_K { Nonce_B }  (Alice proves she knows K)
+Bob checks Nonce_B — Alice is verified. Both sides confirmed. Session begins.
+Q9.  One-Way Authentication Using Symmetric Encryption
+Only one party (usually the client) proves its identity to the other. Simpler than mutual auth — fewer round trips, suitable when the server is inherently trusted.
+Protocol
+Server → Client: Nonce_S  (server issues a random challenge)
+Client → Server: { Client_ID, MAC_K(Nonce_S || Client_ID || Timestamp) }  (client proves it knows key K by computing a MAC over the nonce)
+Server recomputes the MAC using the client's stored key. If they match — client authenticated.
+Timestamp Variant (Kerberos AS Exchange)
+Client sends { Client_ID, Timestamp, MAC_K(Timestamp) }. No nonce needed — the timestamp itself acts as a freshness guarantee. Server rejects requests older than ±5 minutes to block replays. Requires synchronized clocks (NTP).
+Q10.  Federated Identity Management (FIM)
+FIM lets users log in to multiple services across different organizations using one identity — without separate credentials for each. Think 'Login with Google' across dozens of apps.
+Key Roles
+Identity Provider (IdP) — Authenticates the user and vouches for their identity. Examples: Google, Microsoft Azure AD, Okta.
+Service Provider (SP / Relying Party) — The app that trusts the IdP's assertion. Examples: Slack, Salesforce, your university portal.
+How It Works in the Backend — OAuth 2.0 + OpenID Connect
+User clicks 'Login with Google.' SP redirects to Google with: client_id, redirect_uri, scope (openid email profile), and a CSRF state token.
+Google authenticates the user, shows consent screen. On approval, redirects back to SP with an Authorization Code.
+SP's backend exchanges the code (+ client_secret) with Google's token endpoint for: an Access Token, ID Token (JWT with user identity), and Refresh Token.
+SP validates the ID Token — checks JWT signature (using Google's public JWKS), issuer, audience, expiry, and nonce.
+SP extracts user identity from claims (sub, email, name) and creates a local session.
+Do Apps Stay Within Limits?
+In practice — not always. Apps commonly over-request scopes ('just in case'), leading to scope creep. OAuth has no runtime enforcement of scope usage — once a token is issued for a scope, the IdP doesn't monitor whether the app uses only what it needs. Users can review connected apps on platforms like Google, but rarely do.
+Q11.  Software Security Solution Analysis — CrowdStrike Falcon
+Purpose
+CrowdStrike Falcon is a cloud-native Endpoint Detection & Response (EDR) platform. It replaces traditional antivirus with AI-driven behavioral threat detection, real-time prevention, and incident response across laptops, servers, and cloud workloads.
+How It Communicates with External Entities
+Falcon Sensor (agent on endpoint) streams telemetry — process events, network connections, file activity — to CrowdStrike's cloud over HTTPS/TLS on port 443.
+Cloud Threat Graph applies AI models to telemetry from millions of global sensors and returns prevention/detection verdicts back to the sensor in real time.
+Integrates with SIEMs (Splunk, Sentinel), SOAR platforms, and ticketing systems via REST APIs.
+Pulls IOC threat intelligence from CrowdStrike's global intelligence team.
+Deeper Vulnerabilities
+Kernel-level access: Sensor runs at ring 0. A bug here can crash the OS — demonstrated catastrophically in July 2024 when a faulty content update caused millions of Windows machines to BSOD globally.
+Cloud dependency: Detection capability degrades significantly without cloud connectivity. Not suited for air-gapped environments without special configuration.
+Single vendor trust: All endpoint security concentrated in one vendor makes it a high-value supply chain target.
+Data exposure: All endpoint telemetry — file names, process data, user activity — flows to CrowdStrike's cloud, raising GDPR and data sovereignty concerns.
+Q12.  Secure Boot — Linux and Embedded Systems
+Secure Boot ensures only cryptographically signed, trusted software loads at startup. It creates a chain of trust from hardware power-on to the OS.
+Linux / UEFI Secure Boot
+UEFI firmware holds a key database (db) of trusted public keys. Only bootloaders signed by keys in db are allowed to run.
+Linux uses a 'shim' bootloader signed by Microsoft (whose key is in most UEFI firmware). The shim verifies GRUB2, GRUB2 verifies the kernel.
+MOK (Machine Owner Key) allows users/admins to enroll their own keys for custom kernels or modules.
+The dbx blocklist contains hashes of known vulnerable bootloaders — UEFI refuses to load them.
+Embedded Systems Secure Boot
+Boot ROM (immutable, burned into chip) verifies the first-stage bootloader. This is the hardware root of trust.
+Chain continues: SPL → U-Boot → Kernel → Root Filesystem (each stage verifies the next).
+ARM TrustZone isolates secure boot code from the normal OS. ARM Trusted Firmware (ATF) is the reference implementation.
+TPM stores boot measurements in PCR registers — seals decryption keys to specific, expected boot states. Any tampering changes the PCR values and the key won't release.
+dm-verity uses a Merkle tree to verify filesystem block integrity on every read. Used in Android, ChromeOS, embedded Linux for tamper-evident read-only system partitions.
+Q13.  Zero Trust Architecture — Core Properties
+Zero Trust is built on one principle: never trust, always verify. No user, device, or network location gets implicit trust — even inside the corporate network.
+The 7 Core Properties
+Verify Explicitly — Every access request is authenticated using all available context: identity, device health, location, behavior. MFA is mandatory.
+Least Privilege — Users and services get only the minimum access they need, only for the time they need it. JIT (Just-in-Time) access for privileged roles.
+Assume Breach — Design as if attackers are already inside. Minimize blast radius via segmentation; encrypt everything; monitor everywhere.
+Micro-Segmentation — Network divided into small isolated zones. East-west (internal) traffic is inspected just like external traffic.
+Continuous Monitoring — Trust is re-evaluated constantly. Short token lifetimes. Behavioral analytics flag unusual access patterns.
+Device Health Verification — Only compliant devices (patched, encrypted, managed) get access. Non-compliant devices go to a quarantine VLAN.
+Identity as the Perimeter — Centralized IdP brokers all access. Identity replaces the network boundary as the trust anchor. Passwordless/FIDO2 preferred.
+Q14.  Merkle Trees — Integrity Verification in Practice
+A Merkle tree is a binary hash tree where leaf nodes contain hashes of data blocks, and each parent node contains the hash of its two children. The single top-level Merkle Root commits to the integrity of ALL underlying data.
+Data:  D1    D2    D3    D4
+Leaf:  H1    H2    H3    H4
+L1:    H(H1+H2)        H(H3+H4)
+Root:  H( H(H1+H2) + H(H3+H4) )
+Changing even one byte in D2 changes H2 → changes H(H1+H2) → changes the Root. Verification of a single block needs only O(log n) hashes — not the full dataset.
+Practical Use Cases
+Blockchain (Bitcoin/Ethereum) — Merkle Root in each block commits to all transactions. Light clients verify a transaction was included using just a Merkle proof — no need to download the full chain.
+Git — Every commit hashes the entire file tree. Changing any file anywhere in history changes all subsequent commit hashes, making history tamper-evident.
+dm-verity (Android / ChromeOS / Linux) — Hash tree over all filesystem blocks stored alongside the partition. Every read is verified against the tree; any tampering is caught immediately. Root hash is signed in the verified boot chain.
+AIDE / Tripwire — Build baseline hash databases of critical system files. Detect unauthorized changes by comparing current hashes to baseline. Used for host intrusion detection.
+TPM PCR Measurements — Boot stages extend measurements sequentially: PCR[n] = Hash(PCR[n] + new_measurement). Cumulative, tamper-evident boot log.
+Package Managers (RPM, dpkg) — Maintain hash databases of installed files. rpm -V detects tampered binaries.
+Q15.  STRIDE Applied — Amazon Echo (Smart Home Hub)
+STRIDE is Microsoft's threat modeling framework. Each letter is a threat category. Applied here to an Amazon Echo, which connects to AWS cloud, local Wi-Fi, smart home devices (Zigbee/BLE), and a smartphone app.
+Threat
+Attack Example
+Description
+Mitigation
+S — Spoofing
+Ultrasonic voice commands
+Inaudible-to-humans audio tricks Alexa into unlocking doors or making purchases.
+Voice profile recognition; PIN required for sensitive actions.
+T — Tampering
+UART/JTAG firmware injection
+Physical access to debug ports allows replacing firmware with a backdoored version.
+Signed firmware + Secure Boot; disable debug ports in production.
+R — Repudiation
+Deny giving a command
+User claims they never ordered an item; no per-command strong authentication.
+Tamper-evident audit logs; require confirmation for high-impact actions.
+I — Info Disclosure
+Network traffic analysis
+Echo activity patterns reveal when users are home, asleep, or away.
+End-to-end encryption; minimal telemetry; local processing where possible.
+D — Denial of Service
+Wi-Fi jamming
+Jamming disables all smart home controls that depend on cloud connectivity.
+Local offline fallback mode; anomaly detection.
+E — Elevation of Privilege
+Malicious Alexa Skill
+Skill impersonates a trusted service (squatjacking) to access device states or trigger actions beyond its granted permissions.
+Strict skill certification; runtime permission enforcement; user consent gates.
+Q16.  NAC — How the Authentication Server Works
+Network Access Control (NAC) ensures only authorized, compliant devices can connect to a network. The Authentication Server (RADIUS) is the decision-maker.
+Components
+Supplicant — The client device requesting access. Runs 802.1X software.
+Authenticator — The switch or wireless AP enforcing access. Blocks all traffic until auth completes.
+Authentication Server (RADIUS) — Makes the actual allow/deny decision. Validates identity and applies policies.
+Authentication Flow
+Device connects to port → switch blocks all traffic except EAPOL auth frames.
+Switch sends EAP-Request/Identity → device responds with username.
+Switch wraps the EAP message in a RADIUS Access-Request and forwards to RADIUS server (shared secret protects this channel).
+RADIUS validates identity against its backend (Active Directory, LDAP, local DB) using the selected EAP method (EAP-TLS uses certificates; PEAP uses a TLS tunnel then MSCHAPv2).
+On success: RADIUS sends Access-Accept with VLAN assignment and ACL rules. Switch moves port to authorized state with the correct VLAN.
+On failure: RADIUS sends Access-Reject. Port stays blocked, or device goes to a quarantine VLAN.
+Q17.  FreeRADIUS — How It Works, Configuration & Requirements
+FreeRADIUS is the world's most deployed open-source RADIUS server. It handles AAA (Authentication, Authorization, Accounting) for Wi-Fi (WPA2-Enterprise), VPN, and wired 802.1X access control.
+How It Works
+Listens on UDP 1812 (auth) and 1813 (accounting). Each NAS (switch/AP) is configured with a shared secret.
+Incoming request enters a processing pipeline: authorize → authenticate → post-auth.
+authorize: Determine the user and which auth method to use.
+authenticate: Verify credentials — PAP (password), CHAP (challenge-response), or EAP (TLS/PEAP/TTLS for certificate or tunneled auth).
+post-auth: Apply policies, assign VLAN, log accounting data, set session timeout.
+Key Configuration Files
+/etc/freeradius/3.0/radiusd.conf      # Main config — ports, logging
+/etc/freeradius/3.0/clients.conf       # Define NAS devices + shared secrets
+/etc/freeradius/3.0/users              # Local user database
+/etc/freeradius/3.0/mods-enabled/      # Active modules (SQL, LDAP, EAP)
+/etc/freeradius/3.0/certs/             # TLS certificates for EAP-TLS/PEAP
+Sample: Define a NAS Client
+client office_switch {
+    ipaddr  = 192.168.1.10
+    secret  = StrongSharedSecret!
+    nastype = cisco
+}
+Sample: Assign VLAN to a User
+alice  Cleartext-Password := 'Pass123'
+       Tunnel-Type = VLAN,
+       Tunnel-Medium-Type = IEEE-802,
+       Tunnel-Private-Group-ID = "10"
+Required Software
+FreeRADIUS: apt install freeradius (Ubuntu) / yum install freeradius (RHEL)
+Database backend: MySQL/PostgreSQL for scalable user management (freeradius-mysql)
+TLS certificates: OpenSSL (scripts included in /etc/freeradius/certs/ to generate a CA)
+Testing: radtest command (freeradius-utils package)
+# Test auth from CLI
+radtest alice Pass123 localhost 0 testing123
+# Expected: Received Access-Accept
+Required Hardware
+RADIUS Server: Any Linux VM. 1 CPU + 512MB RAM for small deployments; 4+ CPUs for enterprise scale.
+Network Access Server: 802.1X-capable managed switch (Cisco, Aruba, HPE) or wireless controller.
+PKI / CA: Software CA (OpenSSL) for small setups; HSM for production certificate management.
+NTP: Time sync is critical — EAP-TLS certificates are time-sensitive.

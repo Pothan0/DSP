@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  trustchain:
+    build: .
+    ports:
+      - "7070:7070"
+      - "9090:9090"
+    environment:
+      - TRUSTCHAIN_MCP_PORT=7070
+      - TRUSTCHAIN_TELEMETRY_PROMETHEUS_ENABLED=true
+      - TRUSTCHAIN_TELEMETRY_LOG_LEVEL=INFO
+      - TRUSTCHAIN_AUDIT_BACKEND=sqlite
+      - TRUSTCHAIN_AUDIT_DATABASE_URL=/data/trustchain_audit.db
+    volumes:
+      - audit-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - trustchain-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - trustchain-net
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - trustchain-net
+
+volumes:
+  audit-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  trustchain-net:
+    driver: bridge
