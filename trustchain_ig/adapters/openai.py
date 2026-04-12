@@ -191,4 +191,12 @@ def wrap_agent(
     return agent
 
 
-__all__ = ["TrustChainToolset", "wrap_agent"]
+def patch_openai(client: Any, proxy_url: str = "http://localhost:7070/mcp") -> Any:
+    """
+    Patch the default OpenAI client's base URL and session handling 
+    to point to the local TrustChain proxy endpoint.
+    """
+    client.base_url = proxy_url
+    return client
+
+__all__ = ["TrustChainToolset", "wrap_agent", "patch_openai"]
