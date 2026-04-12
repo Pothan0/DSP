@@ -25,6 +25,7 @@ from transport.stdio import StdioProxyTransport
 app = FastAPI(title="TrustChain MCP Gateway", version="1.0.0")
 
 _active_transports: Dict[str, Any] = {}
+_active_queues: Dict[str, asyncio.Queue] = {}
 
 
 class JSONRPCRequest(BaseModel):
@@ -75,6 +76,8 @@ async def mcp_sse(server_id: str, request: Request):
 
     await transport.start()
     _active_transports[session_id] = transport
+    injected_queue = asyncio.Queue()
+    _active_queues[session_id] = injected_queue
 
     async def event_generator():
         try:
@@ -84,18 +87,38 @@ async def mcp_sse(server_id: str, request: Request):
             }
             
             while True:
-                msg = await transport.read_message()
-                if msg is None:
-                    break
-                yield {
-                    "event": "message",
-                    "data": json.dumps(msg)
-                }
+                transport_task = asyncio.create_task(transport.read_message())
+                queue_task = asyncio.create_task(injected_queue.get())
+                
+                done, pending = await asyncio.wait(
+                    [transport_task, queue_task],
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                
+                for task in pending:
+                    task.cancel()
+                    
+                if transport_task in done:
+                    msg = transport_task.result()
+                    if msg is None:
+                        break
+                    yield {
+                        "event": "message",
+                        "data": json.dumps(msg)
+                    }
+                
+                if queue_task in done:
+                    msg = queue_task.result()
+                    yield {
+                        "event": "message",
+                        "data": json.dumps(msg)
+                    }
         except asyncio.CancelledError:
             pass
         finally:
             await transport.stop()
             _active_transports.pop(session_id, None)
+            _active_queues.pop(session_id, None)
 
     return EventSourceResponse(event_generator())
 
@@ -111,6 +134,56 @@ async def mcp_message(server_id: str, request: Request, session_id: str):
         body = await request.body()
         req_msg = json.loads(body.decode())
         
+        if req_msg.get("method") == "tools/call":
+            params = req_msg.get("params", {})
+            name = params.get("name")
+            arguments = params.get("arguments", {})
+            token_payload = params.get("_token_payload")
+            token_signature = params.get("_token_signature")
+            
+            pipeline = get_gateway()._pipeline
+            context = await pipeline.process_tool_call(
+                tool_name=name,
+                tool_args=arguments,
+                session_id=session_id,
+                token_payload=token_payload,
+                token_signature=token_signature,
+                forward_func=None
+            )
+            
+            req_id = req_msg.get("id")
+            if context.decision == "BLOCK":
+                error_msg = {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32600,
+                        "message": f"Tool call blocked: {context.error}"
+                    }
+                }
+                queue = _active_queues.get(session_id)
+                if queue:
+                    queue.put_nowait(error_msg)
+                return Response(status_code=202)
+            
+            elif context.decision == "ESCALATE":
+                error_msg = {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32000,
+                        "message": f"Tool call escalated: {context.error}"
+                    }
+                }
+                queue = _active_queues.get(session_id)
+                if queue:
+                    queue.put_nowait(error_msg)
+                return Response(status_code=202)
+                
+            elif context.decision == "PASS":
+                req_msg["params"].pop("_token_payload", None)
+                req_msg["params"].pop("_token_signature", None)
+
         await transport.send_message(req_msg)
         return Response(status_code=202)
     except json.JSONDecodeError as e:
