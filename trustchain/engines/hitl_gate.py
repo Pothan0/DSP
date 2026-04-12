@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import asyncio
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from dataclasses import dataclass
@@ -33,6 +34,8 @@ class HITLGate:
     def __init__(self):
         self.pending_reviews: Dict[str, HITLRequest] = {}
         self.approval_history: List[HITLRequest] = []
+        self.pending_requests: Dict[str, asyncio.Event] = {}
+        self.decisions: Dict[str, bool] = {}
     
     def _get_irreversibility_weight(self, content: dict) -> float:
         """Determine irreversibility weight based on action type."""
@@ -117,7 +120,49 @@ class HITLGate:
     
     async def process_async(self, envelope: MessageEnvelope) -> dict:
         """Async wrapper for process."""
-        return self.process(envelope)
+        result = self.process(envelope)
+        
+        if result.get("required") and "review_id" in result:
+            review_id = result["review_id"]
+            event = asyncio.Event()
+            self.pending_requests[review_id] = event
+            
+            try:
+                # Wait for the human to resolve the request (default 60s timeout for demo)
+                await asyncio.wait_for(event.wait(), timeout=config.HITL_TIMEOUT if hasattr(config, 'HITL_TIMEOUT') else 60.0)
+                
+                decision = self.decisions.get(review_id, False)
+                if not decision:
+                    result["error"] = "Human rejected the request"
+                    result["decision"] = "BLOCK"
+                else:
+                    result["decision"] = "PASS"
+                    
+            except asyncio.TimeoutError:
+                result["error"] = "HITL request timed out"
+                result["decision"] = "BLOCK"
+                # Remove from pending if timed out
+                if review_id in self.pending_requests:
+                    del self.pending_requests[review_id]
+                if review_id in self.pending_reviews:
+                    del self.pending_reviews[review_id]
+                    
+        return result
+    
+    async def resolve_request(self, request_id: str, approved: bool) -> bool:
+        """Resolve a pending HITL request."""
+        if request_id in self.pending_requests:
+            self.decisions[request_id] = approved
+            self.pending_requests[request_id].set()
+            
+            # Clean up pending structures
+            if approved:
+                self.approve(request_id)
+            else:
+                self.reject(request_id)
+                
+            return True
+        return False
     
     def get_pending_reviews(self) -> List[HITLRequest]:
         """Get all pending HITL reviews."""

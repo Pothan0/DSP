@@ -385,6 +385,32 @@ async def verify_chain():
     return {"valid": valid, "status": "OK" if valid else "TAMPERED"}
 
 
+class ResolveRequest(BaseModel):
+    approved: bool
+
+@app.get("/api/dashboard/pending")
+async def dashboard_pending():
+    """Get pending HITL requests for the dashboard."""
+    gateway = get_gateway()
+    return gateway.get_pending_hitl()
+
+@app.post("/api/dashboard/resolve/{request_id}")
+async def dashboard_resolve(request_id: str, payload: ResolveRequest):
+    """Resolve a pending HITL request from the dashboard."""
+    hitl_gate = get_hitl_gate()
+    success = await hitl_gate.resolve_request(request_id, payload.approved)
+    if success:
+        return {"status": "success", "approved": payload.approved}
+    else:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+@app.get("/api/dashboard/logs")
+async def dashboard_logs(limit: int = 50):
+    """Get audit logs for the dashboard."""
+    audit_store = get_audit_store()
+    logs = audit_store.query(limit=limit)
+    return logs
+
 setup_metrics(app)
 
 
