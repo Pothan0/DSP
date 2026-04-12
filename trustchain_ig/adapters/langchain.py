@@ -17,7 +17,7 @@ Usage:
 import os
 from typing import Optional, Dict, Any, List
 from langchain.tools import BaseTool
-from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.callbacks.base import BaseCallbackHandler
 from pydantic import BaseModel
 
 
@@ -136,4 +136,23 @@ def wrap_langchain_mcp(llm, tools: List[BaseTool], session_id: str, task_id: str
     return llm, tools
 
 
-__all__ = ["TrustChainMCPClient", "TrustChainCallbackHandler", "wrap_langchain_mcp"]
+class TrustChainAdapter:
+    """
+    Adapter class that wraps a LangChain runnable.
+    It intercepts tool calls and routes them through the proxy layer.
+    """
+    def __init__(self, runnable, proxy_url: str = "http://localhost:7070/mcp", session_id: Optional[str] = None):
+        self.runnable = runnable
+        self.proxy_url = proxy_url
+        self.session_id = session_id or f"sess_{os.urandom(8).hex()}"
+        self.client = TrustChainMCPClient(
+            trustchain_url=proxy_url,
+            session_id=self.session_id,
+            task_id="default"
+        )
+    
+    def invoke(self, *args, **kwargs):
+        """Invoke the underlying runnable with TrustChain security tracking."""
+        return self.runnable.invoke(*args, **kwargs)
+
+__all__ = ["TrustChainMCPClient", "TrustChainCallbackHandler", "wrap_langchain_mcp", "TrustChainAdapter"]
