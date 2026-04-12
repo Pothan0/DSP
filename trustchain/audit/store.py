@@ -19,12 +19,12 @@ class AuditStore:
     
     def __init__(self, db_file: str = None):
         self.db_file = db_file or config.DB_FILE
+        self.conn = sqlite3.connect(self.db_file, check_same_thread=False)
         self._init_tables()
     
     def _init_tables(self):
         """Create audit log table if it doesn't exist."""
-        conn = sqlite3.connect(self.db_file)
-        cur = conn.cursor()
+        cur = self.conn.cursor()
         
         cur.execute(f"""
             CREATE TABLE IF NOT EXISTS {config.AUDIT_TABLE} (
@@ -38,19 +38,16 @@ class AuditStore:
             )
         """)
         
-        conn.commit()
-        conn.close()
+        self.conn.commit()
     
     def _get_last_hash(self) -> str:
         """Get the hash of the last audit entry, or GENESIS if none."""
-        conn = sqlite3.connect(self.db_file)
-        cur = conn.cursor()
+        cur = self.conn.cursor()
         cur.execute(f"""
             SELECT this_hash FROM {config.AUDIT_TABLE}
             ORDER BY id DESC LIMIT 1
         """)
         row = cur.fetchone()
-        conn.close()
         return row[0] if row else "GENESIS"
     
     def write(
@@ -71,26 +68,31 @@ class AuditStore:
         raw = f"{prev_hash}|{timestamp}|{event_type}|{payload_json}"
         this_hash = hashlib.sha256(raw.encode()).hexdigest()
         
-        conn = sqlite3.connect(self.db_file)
-        cur = conn.cursor()
+        cur = self.conn.cursor()
         cur.execute(f"""
             INSERT INTO {config.AUDIT_TABLE}
             (timestamp, event_type, payload_json, sender, prev_hash, this_hash)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (timestamp, event_type, payload_json, sender, prev_hash, this_hash))
         
-        conn.commit()
-        conn.close()
+        self.conn.commit()
         
         return this_hash
+    
+    def log_event(self, event_type: str, payload: dict = None, sender: str = None) -> str:
+        """Alias for write to match verification test."""
+        if payload is None:
+            payload = {}
+        if isinstance(event_type, str) and payload == {}:
+            payload = {"event": event_type}
+        return self.write(event_type, payload, sender)
     
     def verify_chain(self) -> bool:
         """
         Verify the integrity of the entire audit chain.
         Returns True if chain is intact, False if tampered.
         """
-        conn = sqlite3.connect(self.db_file)
-        cur = conn.cursor()
+        cur = self.conn.cursor()
         
         cur.execute(f"""
             SELECT id, timestamp, event_type, payload_json, sender, prev_hash, this_hash
@@ -99,7 +101,6 @@ class AuditStore:
         """)
         
         rows = cur.fetchall()
-        conn.close()
         
         prev_hash = "GENESIS"
         
@@ -130,8 +131,7 @@ class AuditStore:
         """
         Query audit logs with optional filters.
         """
-        conn = sqlite3.connect(self.db_file)
-        cur = conn.cursor()
+        cur = self.conn.cursor()
         
         conditions = []
         params = []
@@ -159,7 +159,6 @@ class AuditStore:
         """, params)
         
         rows = cur.fetchall()
-        conn.close()
         
         results = []
         for row in rows:
@@ -176,8 +175,7 @@ class AuditStore:
     
     def get_stats(self) -> dict:
         """Get aggregate statistics."""
-        conn = sqlite3.connect(self.db_file)
-        cur = conn.cursor()
+        cur = self.conn.cursor()
         
         cur.execute(f"SELECT COUNT(*) FROM {config.AUDIT_TABLE}")
         total = cur.fetchone()[0]
@@ -188,8 +186,6 @@ class AuditStore:
             GROUP BY event_type
         """)
         event_counts = dict(cur.fetchall())
-        
-        conn.close()
         
         return {
             "total_events": total,
