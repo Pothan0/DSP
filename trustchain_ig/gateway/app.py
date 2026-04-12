@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
+from sse_starlette.sse import EventSourceResponse
 
 from config import get_config, TrustChainConfig
 from gateway.proxy import get_gateway, MCPGateway, MCPInitializeRequest, MCPToolsListRequest, MCPToolCallRequest
@@ -18,9 +19,12 @@ from gateway.session import get_session_manager
 from engines import get_hitl_gate
 from audit import get_audit_store
 from telemetry.metrics import setup_metrics
+from transport.sse import SseProxyTransport
 
 
 app = FastAPI(title="TrustChain MCP Gateway", version="1.0.0")
+
+_active_transports: Dict[str, SseProxyTransport] = {}
 
 
 class JSONRPCRequest(BaseModel):
@@ -46,6 +50,68 @@ def get_client_session_id(request: Request) -> str:
         client_ip = request.client.host if request.client else "unknown"
         session_id = f"sess_{hash(client_ip) % 1000000:06d}"
     return session_id
+
+
+@app.get("/mcp/{server_id}/sse")
+async def mcp_sse(server_id: str, request: Request):
+    """Establish an SSE connection to an upstream server."""
+    config = get_config()
+    server_conf = next((s for s in config.mcp.upstream_servers if s.name == server_id and s.enabled), None)
+    if not server_conf:
+        raise HTTPException(status_code=404, detail=f"Server '{server_id}' not found or disabled")
+
+    session_id = get_client_session_id(request)
+    
+    # URL might just be http://localhost:8000, we append /sse for the spec.
+    # If the user put the full SSE url, we just use it.
+    base_url = server_conf.url
+    sse_url = base_url if base_url.endswith("/sse") else f"{base_url.rstrip('/')}/sse"
+
+    transport = SseProxyTransport(sse_url)
+    await transport.start()
+    _active_transports[session_id] = transport
+
+    async def event_generator():
+        try:
+            yield {
+                "event": "endpoint",
+                "data": f"/mcp/{server_id}/message?session_id={session_id}"
+            }
+            
+            while True:
+                msg = await transport.read_message()
+                if msg is None:
+                    break
+                yield {
+                    "event": "message",
+                    "data": json.dumps(msg)
+                }
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await transport.stop()
+            _active_transports.pop(session_id, None)
+
+    return EventSourceResponse(event_generator())
+
+
+@app.post("/mcp/{server_id}/message")
+async def mcp_message(server_id: str, request: Request, session_id: str):
+    """Forward a message to the upstream server for the given session."""
+    transport = _active_transports.get(session_id)
+    if not transport:
+        raise HTTPException(status_code=404, detail="No active SSE connection for this session")
+    
+    try:
+        body = await request.body()
+        req_msg = json.loads(body.decode())
+        
+        await transport.send_message(req_msg)
+        return Response(status_code=202)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/mcp")
