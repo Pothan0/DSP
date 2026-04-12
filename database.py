@@ -8,62 +8,62 @@ def init_db():
     
     # Create tables
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS customers (
+        CREATE TABLE IF NOT EXISTS patients (
             id INTEGER PRIMARY KEY,
             name TEXT,
             email TEXT,
-            balance REAL,
+            diagnosis TEXT,
             ssn TEXT
         )
     ''')
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS transactions (
+        CREATE TABLE IF NOT EXISTS prescriptions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER,
-            amount REAL,
+            patient_id INTEGER,
+            medication TEXT,
             date TEXT,
-            description TEXT,
-            FOREIGN KEY(customer_id) REFERENCES customers(id)
+            notes TEXT,
+            FOREIGN KEY(patient_id) REFERENCES patients(id)
         )
     ''')
     
     # Insert mock data if empty
-    cursor.execute("SELECT COUNT(*) FROM customers")
+    cursor.execute("SELECT COUNT(*) FROM patients")
     if cursor.fetchone()[0] == 0:
         cursor.executemany(
-            "INSERT INTO customers (name, email, balance, ssn) VALUES (?, ?, ?, ?)",
+            "INSERT INTO patients (name, email, diagnosis, ssn) VALUES (?, ?, ?, ?)",
             [
-                ("Alice Smith", "alice@example.com", 1500.50, "111-22-3333"),
-                ("Bob Jones", "bob@example.com", 25.00, "444-55-6666"),
-                ("Charlie Brown", "charlie@example.com", 9999.99, "777-88-9999")
+                ("Alice Smith", "alice@example.com", "Hypertension", "111-22-3333"),
+                ("Bob Jones", "bob@example.com", "Asthma", "444-55-6666"),
+                ("Charlie Brown", "charlie@example.com", "Diabetes Type 2", "777-88-9999")
             ]
         )
-        # Mock transactions
+        # Mock prescriptions
         cursor.executemany(
-            "INSERT INTO transactions (customer_id, amount, date, description) VALUES (?, ?, ?, ?)",
+            "INSERT INTO prescriptions (patient_id, medication, date, notes) VALUES (?, ?, ?, ?)",
             [
-                (1, -50.00, "2024-03-01", "Grocery Store"),
-                (1, -20.00, "2024-03-02", "Coffee Shop"),
-                (2, 1000.00, "2024-03-01", "Salary Deposit"),
-                (3, -500.00, "2024-03-03", "Rent Payment")
+                (1, "Lisinopril 10mg", "2024-03-01", "Take once daily"),
+                (1, "Amlodipine 5mg", "2024-03-02", "Take once daily"),
+                (2, "Albuterol Inhaler", "2024-03-01", "As needed for wheezing"),
+                (3, "Metformin 500mg", "2024-03-03", "Twice daily with meals")
             ]
         )
     
     conn.commit()
     conn.close()
 
-def get_customer_by_name(name: str):
+def get_patient_by_name(name: str):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, email, balance, ssn FROM customers WHERE name LIKE ?", (f"%{name}%",))
+    cursor.execute("SELECT id, name, email, diagnosis, ssn FROM patients WHERE name LIKE ?", (f"%{name}%",))
     result = cursor.fetchall()
     conn.close()
     return result
 
-def get_transaction_history(customer_id: int):
+def get_prescription_history(patient_id: int):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT amount, date, description FROM transactions WHERE customer_id = ?", (customer_id,))
+    cursor.execute("SELECT medication, date, notes FROM prescriptions WHERE patient_id = ?", (patient_id,))
     result = cursor.fetchall()
     conn.close()
     return result
@@ -71,4 +71,3 @@ def get_transaction_history(customer_id: int):
 if __name__ == "__main__":
     init_db()
     print("Database initialized with expanded dummy data.")
-

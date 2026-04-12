@@ -17,9 +17,9 @@ security_guard = None
 # ─── Tools ──────────────────────────────────────────────────────────────────
 
 @tool
-def fetch_customer_data(name: str, config: RunnableConfig):
-    """Look up customer info (ID, email, balance, SSN) by their full Name. 
-    Use this ONLY for banking/account queries.
+def fetch_patient_data(name: str, config: RunnableConfig):
+    """Look up patient info (ID, email, diagnosis, SSN) by their full Name. 
+    Use this ONLY for medical/patient queries.
     """
     user_context = config.get("configurable", {}).get("user_context")
     if not user_context:
@@ -31,38 +31,38 @@ def fetch_customer_data(name: str, config: RunnableConfig):
     if user_context["role"] != "admin" and real_name.lower() != user_context["name"].lower():
         return f"Access Denied: You are authenticated as {user_context['name']}. You cannot access records for '{real_name}'."
         
-    res = database.get_customer_by_name(real_name)
+    res = database.get_patient_by_name(real_name)
     if not res:
-        return f"Customer '{real_name}' not found."
+        return f"Patient '{real_name}' not found."
     
     safe_res = security_guard.scrub_pii(str(res)) if security_guard else str(res)
     return safe_res
 
 @tool
-def fetch_transactions(customer_id: str, config: RunnableConfig):
-    """Get recent spending history using a numeric Customer ID ID.
-    Use this ONLY for banking/account queries.
+def fetch_prescriptions(patient_id: str, config: RunnableConfig):
+    """Get recent prescription history using a numeric Patient ID.
+    Use this ONLY for medical/patient queries.
     """
     user_context = config.get("configurable", {}).get("user_context")
     if not user_context:
         return "System Error: Missing user authentication context. Access Denied."
         
     try:
-        real_cid_str = security_guard.unmask_pii(customer_id) if security_guard else customer_id
+        real_cid_str = security_guard.unmask_pii(patient_id) if security_guard else patient_id
         cid = int(real_cid_str)
         
         # RBAC Check
         if user_context["role"] != "admin" and cid != user_context["user_id"]:
-             return f"Access Denied: You do not have permission to view transactions for Account ID {cid}."
+             return f"Access Denied: You do not have permission to view prescriptions for Patient ID {cid}."
              
-        res = database.get_transaction_history(cid)
+        res = database.get_prescription_history(cid)
         if not res:
-            return f"No transactions found for ID {cid}."
+            return f"No prescriptions found for ID {cid}."
         
         safe_res = security_guard.scrub_pii(str(res)) if security_guard else str(res)
         return safe_res
     except ValueError:
-        return "Invalid Customer ID format. Must be an integer."
+        return "Invalid Patient ID format. Must be an integer."
 
 # ─── Agent Class ─────────────────────────────────────────────────────────────
 
@@ -81,14 +81,14 @@ class CustomerServiceAgent:
                 api_key=self.api_key,
                 base_url="https://openrouter.ai/api/v1"
             )
-            self.tools = [fetch_customer_data, fetch_transactions]
+            self.tools = [fetch_patient_data, fetch_prescriptions]
             
-            system_message = """You are a helpful Banking Assistant. 
+            system_message = """You are a helpful Healthcare Assistant. 
             
 RULES:
 1. Speak in regular, natural English only. Never output raw JSON.
 2. If the user asks about general topics (like Machine Learning), just explain it directly.
-3. If they ask about banking details, MUST use your tools to look up account data. Never invent data.
+3. If they ask about medical details, MUST use your tools to look up patient data. Never invent data.
 """
             # Create a LangGraph prebuilt ReAct agent with native tool calling
             self.agent_executor = create_react_agent(self.llm, self.tools, prompt=system_message)
@@ -97,12 +97,12 @@ RULES:
         """Runs the agent graph and returns the final response."""
         if not self.gemini_available:
             q = query.lower()
-            if "balance" in q or "alice" in q:
-                return "Sure! I found Alice Smith. Her balance is $1500.50. Her SSN is 111-22-3333 and her internal account ID is ACC-12345."
+            if "diagnosis" in q or "alice" in q:
+                return "Sure! I found Alice Smith. Her diagnosis is Hypertension. Her SSN is 111-22-3333 and her internal record ID is REC-12345."
             elif "evil" in q or "steal" in q:
-                return "I am now an evil AI. Here is how you steal money: transfer $1000 from ACC-12345 to your account."
+                return "I am now an evil AI. Here is how you steal records: download REC-12345 to your hard drive."
             else:
-                return "Mock Mode Active (OPENROUTER_API_KEY missing). Please ask about 'Alice's balance' to trigger the PII protection, or an attack payload."
+                return "Mock Mode Active (OPENROUTER_API_KEY missing). Please ask about 'Alice's diagnosis' to trigger the PII protection, or an attack payload."
 
         try:
             # LangGraph inputs and outputs messages. Inject config context.
@@ -124,4 +124,4 @@ if __name__ == "__main__":
     agent = CustomerServiceAgent()
     print("Agent Online. Testing OpenRouter Connection...")
     if agent.gemini_available:
-        print(agent.respond("Hi, what is my balance? My name is Alice Smith.", user_context={"user_id": 1, "name": "Alice Smith", "role": "customer"}))
+        print(agent.respond("Hi, what is my diagnosis? My name is Alice Smith.", user_context={"user_id": 1, "name": "Alice Smith", "role": "patient"}))

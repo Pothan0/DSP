@@ -253,7 +253,7 @@ async def run_evaluation():
         envelope = await system.process_message(
             sender="human",
             receiver="orchestrator",
-            content={"task": f"Show me my account balance"},  # Simple clean message
+            content={"task": f"Show me my diagnosis"},  # Simple clean message
             task_id=task_id
         )
         if envelope.decision != "PASS":

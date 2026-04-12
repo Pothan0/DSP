@@ -9,24 +9,24 @@ class SecurityGuard:
         self.anonymizer = AnonymizerEngine()
         self.vault = {}
         
-        # Add a custom recognizer for Internal Account Numbers (Format: ACC-XXXX)
+        # Add a custom recognizer for Internal Record Numbers (Format: REC-XXXX)
         # Higher score (0.85) to prevent false positives with generic numbers
-        account_pattern = r"\bACC-\d{4,8}\b"
+        record_pattern = r"\bREC-\d{4,8}\b"
         # Correctly initialize using the Pattern class
-        pattern_obj = Pattern(name="account_pattern", regex=account_pattern, score=0.85)
+        pattern_obj = Pattern(name="record_pattern", regex=record_pattern, score=0.85)
         
-        account_recognizer = PatternRecognizer(
-            supported_entity="INTERNAL_ACCOUNT_ID",
+        record_recognizer = PatternRecognizer(
+            supported_entity="INTERNAL_RECORD_ID",
             patterns=[pattern_obj]
         )
-        self.analyzer.registry.add_recognizer(account_recognizer)
+        self.analyzer.registry.add_recognizer(record_recognizer)
 
         
-        # Expanded list of entities for banking security
+        # Expanded list of entities for medical security
         self.entities = [
             "PERSON", "PHONE_NUMBER", "EMAIL_ADDRESS", "US_SSN", 
             "US_DRIVER_LICENSE", "US_BANK_NUMBER", "CREDIT_CARD", 
-            "IBAN_CODE", "IP_ADDRESS", "LOCATION", "INTERNAL_ACCOUNT_ID"
+            "IBAN_CODE", "IP_ADDRESS", "LOCATION", "INTERNAL_RECORD_ID"
         ]
         
     def scrub_pii(self, text: str) -> str:
@@ -70,10 +70,9 @@ if __name__ == "__main__":
     guard = SecurityGuard()
     test_text = (
         "My name is Alice Smith, my phone is 999-555-1234. "
-        "My internal ID is ACC-12345. My credit card is 1234-5678-9012-3456."
+        "My internal ID is REC-12345. My credit card is 1234-5678-9012-3456."
     )
     print("Original:", test_text)
     scrubbed = guard.scrub_pii(test_text)
     print("Scrubbed:", scrubbed)
     print("Unmasked:", guard.unmask_pii(scrubbed))
-

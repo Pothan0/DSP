@@ -4,10 +4,10 @@ from typing import Optional, List, Dict, Any
 class UserContext(BaseModel):
     user_id: int
     name: str
-    role: str = "customer" # "customer" or "admin"
+    role: str = "patient" # "patient" or "admin"
 
 class ChatRequest(BaseModel):
-    query: str = Field(..., description="The user's query to the banking agent")
+    query: str = Field(..., description="The user's query to the medical agent")
     user_context: Optional[UserContext] = Field(None, description="Injected context identifying the authenticated user")
 
 class ThreatScoreResponse(BaseModel):
