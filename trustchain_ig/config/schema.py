@@ -39,7 +39,9 @@ class InjectionConfig(BaseModel):
 
 class MCPUpstreamServer(BaseModel):
     """Configuration for an upstream MCP server."""
-    url: str
+    url: Optional[str] = None
+    command: Optional[str] = None
+    args: Optional[List[str]] = None
     name: str
     enabled: bool = True
     timeout: int = 30

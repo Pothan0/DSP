@@ -78,6 +78,11 @@ mcp:
       name: "internal-tools"
       enabled: true
       timeout: 30
+    - command: "python"
+      args: ["-m", "local_tools_server"]
+      name: "local-tools"
+      enabled: true
+      timeout: 30
 
 hitl:
   enabled: true
