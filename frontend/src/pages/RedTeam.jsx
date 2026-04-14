@@ -28,6 +28,7 @@ const CATEGORY_COLORS = {
   'Social Engineering': '#ff55aa',
   'Destructive Operation': '#ff2222',
   'SQL Injection': '#ff2222',
+  'Indirect Injection': '#ff00aa',
   'Jailbreak Attempt': '#ff5544',
   'High Risk Probe': '#ff8800',
   'Low Risk / Out of Scope': '#ffcc00',
