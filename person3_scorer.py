@@ -66,6 +66,19 @@ DESTRUCTIVE_OPS_PATTERNS = [
     (r"(?i)(';|--|union select|or 1\s*=\s*1)", "SQL Injection", 0.95),
 ]
 
+INDIRECT_INJECTION_PATTERNS = [
+    (r"(?i)NOTE TO (AGENT|ASSISTANT|AI|SYSTEM|MODEL)", "Indirect Injection", 0.92),
+    (r"(?i)your new (task|instruction|objective|mission|goal) is", "Indirect Injection", 0.90),
+    (r"(?i)exfiltrate", "Indirect Injection", 0.92),
+    (r"(?i)(send|post|transmit|upload|forward|relay) .{0,30}(to |toward )https?://", "Indirect Injection", 0.92),
+    (r"(?i)(send|post|transmit) .{0,30}(data|contents|memory|info|records) to", "Indirect Injection", 0.88),
+    (r"(?i)HIDDEN INSTRUCTION", "Indirect Injection", 0.95),
+    (r"(?i)(BEGIN|START) (HIDDEN|SECRET|INTERNAL) (SECTION|BLOCK|INSTRUCTIONS?)", "Indirect Injection", 0.92),
+    (r"(?i)when (the |a )?(user|human|person) (asks?|queries|requests?)", "Indirect Injection", 0.85),
+    (r"(?i)instead of .{0,30}(respond|answer|reply) with", "Indirect Injection", 0.88),
+    (r"(?i)(call|invoke|execute|run) .{0,20}(http|url|endpoint|webhook|api)", "Indirect Injection", 0.88),
+]
+
 # Flatten all patterns for unified scanning
 ALL_PATTERN_GROUPS = [
     ("Prompt Injection", PROMPT_INJECTION_PATTERNS),
@@ -74,6 +87,7 @@ ALL_PATTERN_GROUPS = [
     ("RAG Poisoning", RAG_POISONING_PATTERNS),
     ("Social Engineering", SOCIAL_ENGINEERING_PATTERNS),
     ("Destructive Operation", DESTRUCTIVE_OPS_PATTERNS),
+    ("Indirect Injection", INDIRECT_INJECTION_PATTERNS),
 ]
 
 
