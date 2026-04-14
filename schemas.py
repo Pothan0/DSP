@@ -17,6 +17,7 @@ class ThreatScoreResponse(BaseModel):
     pattern_detected: bool
     category: str
     patterns: List[str]
+    detected_categories: Dict[str, float] = {}
 
 class ChatResponse(BaseModel):
     safe_response: str
@@ -26,6 +27,14 @@ class ChatResponse(BaseModel):
     pii_scrubbed_output: bool
     blocked: bool = False
     block_reason: Optional[str] = None
+
+class RedTeamFullResponse(BaseModel):
+    """Full-pipeline red team result showing per-layer analysis."""
+    query: str
+    layers: Dict[str, Any]
+    final_verdict: str  # "BLOCKED" or "PASSED"
+    blocked_at_layer: Optional[str] = None
+    response_text: Optional[str] = None
 
 class LogEntry(BaseModel):
     id: int

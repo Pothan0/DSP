@@ -1,5 +1,5 @@
 /**
- * API Service Layer — AegisHealth Nexus Gateway
+ * API Service Layer — NovaSentinel Gateway
  *
  * Uses relative URLs so Vite's dev proxy forwards them to FastAPI on :8000.
  * In production, configure your reverse proxy (nginx) similarly.
@@ -93,8 +93,19 @@ export async function verifyChain() {
  *
  * Backend expects:  { query: string }
  * Backend returns:  { threat_score, is_malicious, semantic_score,
- *                     pattern_detected, category, patterns: [] }
+ *                     pattern_detected, category, patterns: [],
+ *                     detected_categories: {} }
  */
 export async function redTeamTest(query) {
   return apiPost('/api/v1/tools/red_team', { query });
+}
+
+/**
+ * Test a single prompt through the FULL 4-layer security pipeline.
+ *
+ * Backend expects:  { query: string, user_context?: {...} }
+ * Backend returns:  { query, layers: {}, final_verdict, blocked_at_layer, response_text }
+ */
+export async function redTeamTestFull(query, userContext) {
+  return apiPost('/api/v1/tools/red_team_full', { query, user_context: userContext });
 }

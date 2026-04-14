@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.set_page_config(page_title="AegisHealth Nexus Gateway", page_icon="⚕️", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="NovaSentinel Gateway", page_icon="⚕️", layout="wide", initial_sidebar_state="collapsed")
 
 # ─── Full Landing Page CSS ────────────────────────────────────────────────────
 st.markdown("""
@@ -137,7 +137,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero-section">
     <div class="hero-badge">Enterprise Security Gateway — Now Active</div>
-    <div class="hero-title">AegisHealth<br>Nexus Gateway</div>
+    <div class="hero-title">NovaSentinel<br>Nexus Gateway</div>
     <div class="hero-subtitle">Industry-grade transparent security proxy for Agentic AI in Healthcare. Zero-trust protection with zero code changes. HIPAA & SOC2 ready.</div>
 </div>
 """, unsafe_allow_html=True)
@@ -215,6 +215,6 @@ st.markdown("""
 # ─── Footer ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="footer">
-    <div class="footer-text">Built for the future of secure, autonomous healthcare AI. <span class="footer-brand">AegisHealth Nexus Gateway</span> © 2024</div>
+    <div class="footer-text">Built for the future of secure, autonomous healthcare AI. <span class="footer-brand">NovaSentinel Gateway</span> © 2024</div>
 </div>
 """, unsafe_allow_html=True)

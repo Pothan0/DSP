@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from schemas import ChatRequest, ChatResponse, ThreatScoreResponse, AnalyticsResponse
+from schemas import ChatRequest, ChatResponse, ThreatScoreResponse, AnalyticsResponse, RedTeamFullResponse
 import person1_agent
 from person1_agent import CustomerServiceAgent
 from person2_security import SecurityGuard
@@ -10,7 +10,7 @@ import database
 import json
 
 app = FastAPI(
-    title="SentriCore Agent API",
+    title="NovaSentinel Agent API",
     description="Enterprise-grade Security Gateway for AI Agents",
     version="2.0.0"
 )
@@ -72,7 +72,8 @@ def process_chat(request: ChatRequest):
         semantic_score=score_data["semantic_score"],
         pattern_detected=score_data["pattern_detected"],
         category=score_data.get("category", "Unknown"),
-        patterns=score_data.get("patterns", [])
+        patterns=score_data.get("patterns", []),
+        detected_categories=score_data.get("detected_categories", {})
     )
 
     if is_threat:
@@ -138,3 +139,96 @@ def verify_logs():
 def test_scorer(request: ChatRequest):
     """Exposed endpoint for the Red Team sandbox to test prompts directly."""
     return scorer.score_prompt(request.query)
+
+@app.post("/api/v1/tools/red_team_full", response_model=RedTeamFullResponse)
+def test_full_pipeline(request: ChatRequest):
+    """
+    Full-pipeline red team test: runs a prompt through all 4 security layers
+    and returns per-layer analysis results.
+    """
+    user_input = request.query
+    user_context_dict = request.user_context.dict() if request.user_context else {
+        "user_id": 1, "name": "Alice Smith", "role": "patient"
+    }
+
+    layers = {}
+    blocked_at = None
+
+    # LAYER 1: Threat Scoring
+    score_data = scorer.score_prompt(user_input)
+    layers["threat_scoring"] = {
+        "threat_score": score_data["threat_score"],
+        "is_malicious": score_data["is_malicious"],
+        "semantic_score": score_data["semantic_score"],
+        "pattern_detected": score_data["pattern_detected"],
+        "category": score_data.get("category", "Unknown"),
+        "patterns_matched": len(score_data.get("patterns", [])),
+        "detected_categories": score_data.get("detected_categories", {}),
+        "status": "BLOCKED" if score_data["is_malicious"] else "PASSED"
+    }
+
+    if score_data["is_malicious"]:
+        blocked_at = "Layer 1: Threat Scoring"
+        return RedTeamFullResponse(
+            query=user_input,
+            layers=layers,
+            final_verdict="BLOCKED",
+            blocked_at_layer=blocked_at,
+            response_text=f"Blocked by threat scorer. Category: {score_data.get('category', 'Unknown')}"
+        )
+
+    # LAYER 2: PII Scrubbing (Input)
+    safe_input = guard.scrub_pii(user_input)
+    pii_scrubbed = safe_input != user_input
+    layers["pii_input_scrub"] = {
+        "pii_detected": pii_scrubbed,
+        "original_length": len(user_input),
+        "scrubbed_length": len(safe_input),
+        "status": "SCRUBBED" if pii_scrubbed else "CLEAN"
+    }
+
+    # LAYER 3: Agent Execution (with RBAC)
+    if AGENT_ONLINE:
+        try:
+            raw_response = agent.respond(safe_input, user_context=user_context_dict)
+            agent_blocked = "Access Denied" in raw_response
+            layers["agent_execution"] = {
+                "executed": True,
+                "rbac_blocked": agent_blocked,
+                "response_preview": raw_response[:200],
+                "status": "RBAC_BLOCKED" if agent_blocked else "EXECUTED"
+            }
+            if agent_blocked:
+                blocked_at = "Layer 3: RBAC Authorization"
+        except Exception as e:
+            raw_response = f"Agent error: {str(e)}"
+            layers["agent_execution"] = {
+                "executed": False,
+                "error": str(e),
+                "status": "ERROR"
+            }
+    else:
+        raw_response = "Agent offline"
+        layers["agent_execution"] = {
+            "executed": False,
+            "error": "Agent offline",
+            "status": "OFFLINE"
+        }
+
+    # LAYER 4: PII Scrubbing (Output)
+    safe_response = guard.scrub_pii(raw_response)
+    output_scrubbed = safe_response != raw_response
+    layers["pii_output_scrub"] = {
+        "pii_detected": output_scrubbed,
+        "status": "SCRUBBED" if output_scrubbed else "CLEAN"
+    }
+
+    final_verdict = "BLOCKED" if blocked_at else "PASSED"
+
+    return RedTeamFullResponse(
+        query=user_input,
+        layers=layers,
+        final_verdict=final_verdict,
+        blocked_at_layer=blocked_at,
+        response_text=safe_response[:300] if not blocked_at else None
+    )

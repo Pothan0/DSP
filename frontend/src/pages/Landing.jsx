@@ -17,7 +17,7 @@ export default function Landing() {
               Enterprise Security Gateway
             </div>
             <h1 className="hero-title">
-              AegisHealth<br />
+              NovaSentinel<br />
               <span className="text-gradient">Nexus Gateway</span>
             </h1>
             <p className="hero-subtitle">
@@ -65,7 +65,7 @@ export default function Landing() {
               <div className="section-label">Core Protection</div>
               <h2 className="section-title">4 Layers of Defense</h2>
               <p className="section-subtitle">
-                AegisHealth provides a multi-tiered security gauntlet that intercepts,
+                NovaSentinel provides a multi-tiered security gauntlet that intercepts,
                 analyzes, and sanitizes all agent traffic in real-time.
               </p>
             </div>
@@ -117,7 +117,7 @@ export default function Landing() {
               <div className="section-label">Zero Code Changes</div>
               <h2 className="section-title">How It Works</h2>
               <p className="section-subtitle">
-                Deploy AegisHealth as a transparent proxy between your AI agents and MCP tool servers. No SDK required.
+                Deploy NovaSentinel as a transparent proxy between your AI agents and MCP tool servers. No SDK required.
               </p>
             </div>
 
@@ -128,7 +128,7 @@ export default function Landing() {
                   <Zap size={28} />
                 </div>
                 <h3>Point & Intercept</h3>
-                <p>Configure your agent's MCP endpoint to route through the AegisHealth gateway. One config line change.</p>
+                <p>Configure your agent's MCP endpoint to route through the NovaSentinel gateway. One config line change.</p>
               </div>
 
               <div className="glass-card-static how-step animate-in-delay-2">
@@ -174,10 +174,10 @@ export default function Landing() {
         <footer className="footer">
           <div className="container flex-between">
             <div className="footer-brand">
-              <Shield size={16} /> AegisHealth Nexus Gateway
+              <Shield size={16} /> NovaSentinel Gateway
             </div>
             <div className="footer-links">
-              <span>© 2026 Aegis Health Security</span>
+              <span>© 2026 NovaSentinel Security</span>
             </div>
           </div>
         </footer>

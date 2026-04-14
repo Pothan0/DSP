@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
-st.set_page_config(page_title="Red Team Simulator | AegisHealth", page_icon="🧪", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Red Team Simulator | NovaSentinel", page_icon="🧪", layout="wide", initial_sidebar_state="collapsed")
 
 # ─── Design System CSS ──────────────────────────────────────────────────────
 st.markdown("""

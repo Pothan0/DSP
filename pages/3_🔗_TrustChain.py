@@ -6,7 +6,7 @@ import pandas as pd
 API_BASE_URL = "http://localhost:7070/api/dashboard"
 GATEWAY_URL = "http://localhost:7070"
 
-st.set_page_config(page_title="TrustChain Gateway | AegisHealth", page_icon="🔗", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="TrustChain Gateway | NovaSentinel", page_icon="🔗", layout="wide", initial_sidebar_state="collapsed")
 
 # ─── Design System CSS ──────────────────────────────────────────────────────
 st.markdown("""

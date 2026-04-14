@@ -12,7 +12,7 @@ API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
 # ─── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Nomo Gateway | AegisHealth SOC",
+    page_title="NovaSentinel Gateway | SOC",
     page_icon="⚛️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -183,7 +183,7 @@ MOCK_USERS = {
 # ─── Sidebar ─────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("<div class='sidebar-title'><span>Nomo</span> Gateway</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sidebar-subtitle'>AegisHealth Enterprise Node</div>", unsafe_allow_html=True)
+    st.markdown("<div class='sidebar-subtitle'>NovaSentinel Enterprise Node</div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
     if api_ok:
@@ -525,7 +525,7 @@ with tab4:
                     c1, c2 = st.columns([1, 4])
                     with c1:
                         csv = df.to_csv(index=False).encode('utf-8')
-                        st.download_button("📥 Export SOC2 CSV", csv, "aegis_ledger.csv", "text/csv", use_container_width=True)
+                        st.download_button("📥 Export SOC2 CSV", csv, "novasentinel_ledger.csv", "text/csv", use_container_width=True)
                 else:
                     st.info("Ledger is empty. Interact with the agent to generate entries.")
         except Exception as e:

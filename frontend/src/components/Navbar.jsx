@@ -12,7 +12,7 @@ export default function Navbar() {
         <div className="brand-icon">
           <Shield size={20} />
         </div>
-        <span className="brand-text"><span className="text-cyan">Aegis</span>Health</span>
+        <span className="brand-text"><span className="text-cyan">Nova</span>Sentinel</span>
       </Link>
       <div className="nav-links">
         <Link to="/dashboard" className={isActive('/dashboard')}>

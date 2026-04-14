@@ -47,7 +47,7 @@ export default function Architecture() {
               System Architecture
             </h1>
             <p className="arch-subtitle">
-              AegisHealth's multi-layered security pipeline for AI agent traffic. 
+              NovaSentinel's multi-layered security pipeline for AI agent traffic. 
               Every request traverses the full security gauntlet before reaching the tool server.
             </p>
           </div>

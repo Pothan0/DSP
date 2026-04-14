@@ -5,7 +5,7 @@ import requests
 API_URL = os.environ.get("API_URL", "http://localhost:8000")
 GATEWAY_URL = "http://localhost:7070"
 
-st.set_page_config(page_title="Architecture | AegisHealth", page_icon="🏗️", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Architecture | NovaSentinel", page_icon="🏗️", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
@@ -47,7 +47,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("<h1 style='font-size:2rem; margin-bottom:8px;'>🏗️ System Architecture</h1>", unsafe_allow_html=True)
-st.markdown("<p style='color:#8b9bb4; font-size:0.8rem; margin-bottom:32px;'>AegisHealth Nexus Gateway — Enterprise security architecture overview</p>", unsafe_allow_html=True)
+st.markdown("<p style='color:#8b9bb4; font-size:0.8rem; margin-bottom:32px;'>NovaSentinel Gateway — Enterprise security architecture overview</p>", unsafe_allow_html=True)
 
 # ─── Status ──────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3)
