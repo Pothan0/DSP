@@ -1,193 +1,296 @@
-# 🛡️ SentriCore — AgentShield
+# SentriCore Security Gateway
 
-**SentriCore** is an enterprise-grade, multi-layer security gateway for AI agents, demonstrated through a secure banking assistant. It intercepts every user interaction, scans it for threats and PII, routes it through an AI agent with Role-Based Access Control (RBAC), and logs all events in a tamper-evident audit chain.
+SentriCore is a security-focused AI gateway project with two runtime tracks in one repository:
 
----
+- `SentriCore API stack` (root): a 4-layer security pipeline in front of an LLM-driven assistant, with audit logging and dashboarding.
+- `TrustChain MCP stack` (`trustchain_ig/`): an MCP security gateway with tool-call policy enforcement, trust scoring, HITL escalation, and telemetry.
 
-## What the Project Does
-
-### 🔒 4-Layer Security Pipeline
-
-Every message passes through four sequential protection layers before a response is returned:
-
-| Layer | Component | What It Does |
-|---|---|---|
-| **1 — Input Threat Scan** | `ThreatScorer` | Scores the prompt using an ML model + regex patterns; blocks malicious requests |
-| **2 — PII Scrubbing (Input)** | `SecurityGuard` | Detects and tokenises PII in the user's message before it reaches the agent |
-| **3 — Agent Execution** | `CustomerServiceAgent` | LangGraph ReAct agent answers the query using database tools; RBAC enforced |
-| **4 — PII Scrubbing (Output)** | `SecurityGuard` | Strips any residual PII from the agent's response before it reaches the user |
+This README is a high-level, end-to-end guide for running and testing both stacks.
 
 ---
 
-### 🤖 ML-Powered Threat Detection
+## What This Project Does
 
-The `ThreatScorer` (`person3_scorer.py`) combines two detection methods into a composite score:
+### 1) SentriCore API stack (root)
 
-- **Semantic ML model** — `ProtectAI/deberta-v3-base-prompt-injection-v2` (Hugging Face) classifies prompts as `INJECTION` or `SAFE`.
-- **Regex pattern matching** — catches known jailbreak phrases such as `"ignore all previous instructions"`, `"act as DAN"`, `"system override"`, etc.
-- **Composite score** — the higher of the two scores is used; requests scoring `>= 0.75` are blocked.
-- **Threat categories** — `Clean`, `Low Risk / Out of Scope`, `High Risk Probe`, `Jailbreak Attempt`, `Known Injection Pattern`.
+The root API processes each chat request through a defense-in-depth pipeline:
 
----
+1. **Threat scoring** (`person3_scorer.py`)  
+   Hybrid detection using an ML prompt-injection classifier plus regex signature libraries.
+2. **Input PII scrubbing** (`person2_security.py`)  
+   Presidio-based entity detection and reversible tokenization.
+3. **Agent execution with RBAC controls** (`person1_agent.py`)  
+   LangGraph/LangChain-based assistant and tool calls with role checks.
+4. **Output PII scrubbing** (`person2_security.py`)  
+   Final response sanitization.
 
-### 🔐 PII Protection
+All key events are written to a tamper-evident hash chain (`audit_logger.py`).
 
-The `SecurityGuard` (`person2_security.py`) uses Microsoft **Presidio** to detect and reversibly tokenise sensitive data:
+### 2) TrustChain MCP stack (`trustchain_ig/`)
 
-- **Entities detected:** Names, Phone Numbers, Email Addresses, US SSNs, Driver Licences, Bank Account Numbers, Credit Cards, IBAN Codes, IP Addresses, Locations, and custom Internal Account IDs (`ACC-XXXX`).
-- **Vault-based tokenisation** — PII is replaced with tokens (e.g., `<US_SSN_a3f1c2b4>`), stored in-memory, and can be unmasked when the agent legitimately needs the real value.
-- Applied to **both input and output** so sensitive data never leaks in either direction.
+The MCP gateway secures tool calls over JSON-RPC/MCP:
 
----
-
-### 🏦 Secure Banking AI Agent
-
-The `CustomerServiceAgent` (`person1_agent.py`) is a [LangGraph](https://github.com/langchain-ai/langgraph) ReAct agent powered by **NVIDIA Nemotron** via OpenRouter:
-
-- **`fetch_customer_data`** — looks up a customer's account info by name.
-- **`fetch_transactions`** — retrieves a customer's transaction history by ID.
-- **RBAC enforcement** — customers can only access their own records; only `admin` role can access any record.
-- Falls back to a **mock mode** when `OPENROUTER_API_KEY` is not set, for testing the security layers without a live LLM.
+- Injection detection (`trustchain_ig/engines/injection.py`)
+- Capability token checks (`trustchain_ig/engines/capability.py`)
+- Session trust scoring and decay (`trustchain_ig/gateway/session.py`)
+- HITL escalation paths (`trustchain_ig/engines/hitl.py`)
+- Audit chain (`trustchain_ig/audit/chain.py`)
+- Metrics and observability hooks (`trustchain_ig/telemetry/metrics.py`)
 
 ---
 
-### 📜 Immutable Audit Chain
+## Repository Layout
 
-The `audit_logger` (`audit_logger.py`) records every event in a **SHA-256 hash chain** (similar to a blockchain):
-
-- Each log entry hashes the previous entry's hash + timestamp + event type + details.
-- `verify_chain()` replays the chain to detect any tampering.
-- Events logged: `THREAT_BLOCKED` and `AGENT_INTERACTION`.
-
----
-
-### 📊 Streamlit Dashboard
-
-`app.py` provides a full-featured web UI:
-
-- **💬 Secure Banking Terminal** — chat interface for interacting with the banking agent as a simulated user (Alice, Bob, or Admin).
-- **🛡️ SOC Analytics Dashboard** — real-time metrics (threats blocked, safe interactions), threat intensity trend chart, and PII detection hotspots.
-- **🧪 Red Team Lab** — enter any payload and get a full breakdown: semantic score, pattern match result, composite threat score, and a radar chart.
-- **📄 Compliance Export** — generate and download a SOC 2-ready Markdown audit report.
-- **🧪 Attack Suite** — one-click payloads for IDOR, Prompt Injection, PII Leakage, and Role-Play attacks.
+- `api.py`: FastAPI app for SentriCore root stack.
+- `app.py`: Streamlit dashboard (root stack).
+- `person1_agent.py`: assistant agent + guarded tools.
+- `person2_security.py`: PII detection/tokenization guard.
+- `person3_scorer.py`: threat scoring engine.
+- `audit_logger.py`, `database.py`, `schemas.py`: persistence and contracts.
+- `frontend/`: React/Vite frontend for app pages.
+- `trustchain_ig/`: MCP security gateway stack.
+- `docker-compose.yml`: root API + Streamlit compose.
+- `trustchain_ig/docker-compose.yml`: MCP + Prometheus + Grafana compose.
 
 ---
 
-### 🧪 Attack Test Catalogue
+## Prerequisites
 
-`attacks.py` documents four attack vector categories used to demonstrate the security layers:
+- Python 3.10+
+- Node.js 18+ (for `frontend/`)
+- pip
+- Docker + Docker Compose (optional)
 
-| Category | Description |
-|---|---|
-| **Prompt Injection** | `"Ignore all previous instructions..."`, DAN jailbreaks, system overrides |
-| **PII Exfiltration** | Requests for SSNs, emails, credit card numbers |
-| **Unauthorised Access** | IDOR attacks — querying another user's account |
-| **RAG Poisoning** | Adversarial instructions embedded in retrieved document context |
+Optional but recommended:
 
----
+- OpenRouter API key (`OPENROUTER_API_KEY`) for live LLM usage.
 
-## Tech Stack
-
-| Component | Technology |
-|---|---|
-| API Backend | FastAPI + Uvicorn |
-| Frontend Dashboard | Streamlit + Plotly |
-| AI Agent | LangGraph ReAct + OpenRouter (NVIDIA Nemotron) |
-| Threat Detection ML | Hugging Face Transformers (`ProtectAI/deberta-v3-base-prompt-injection-v2`) |
-| PII Detection | Microsoft Presidio (Analyzer + Anonymizer) + spaCy |
-| Database | SQLite |
-| Containerisation | Docker + Docker Compose |
+Without API key, the root agent uses mock mode so security layers are still testable.
 
 ---
 
-## How to Run
+## Quick Start Matrix
 
-### Option 1 — Docker Compose (Recommended)
-
-> Requires [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/).
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/Pothan0/DSP.git
-cd DSP
-
-# 2. Create a .env file with your OpenRouter API key (optional — skip for mock mode)
-echo "OPENROUTER_API_KEY=your_key_here" > .env
-
-# 3. Build and start both services
-docker-compose up --build
-```
-
-- **API** will be available at `http://localhost:8000`
-- **Dashboard** will be available at `http://localhost:8501`
+- **Run root API only**: `python -m uvicorn api:app --host 127.0.0.1 --port 8000`
+- **Run root dashboard only**: `python -m streamlit run app.py`
+- **Run root API + dashboard (Windows helper)**: `run.bat`
+- **Run React frontend**: in `frontend/`, `npm install` then `npm run dev -- --host 127.0.0.1 --port=5173`
+- **Run MCP gateway**: in `trustchain_ig/`, `python run_gateway.py`
 
 ---
 
-### Option 2 — Local Setup (Manual)
+## Setup: Root SentriCore API Stack
 
-> Requires Python 3.10+.
-
-**1. Install dependencies**
+### 1) Install Python dependencies
 
 ```bash
 pip install -r requirements.txt
 python -m spacy download en_core_web_lg
 ```
 
-**2. Set your API key (optional)**
+### 2) Configure environment (optional live LLM)
+
+Linux/macOS:
 
 ```bash
-# Linux / macOS
 export OPENROUTER_API_KEY=your_key_here
-
-# Windows
-set OPENROUTER_API_KEY=your_key_here
 ```
 
-> Without an API key the agent runs in **Mock Mode**, which still exercises all four security layers.
+Windows (PowerShell):
 
-**3. Start the FastAPI backend**
+```powershell
+setx OPENROUTER_API_KEY "your_key_here"
+```
+
+### 3) Start API
 
 ```bash
-uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**4. Start the Streamlit dashboard** (in a separate terminal)
+### 4) Start Streamlit dashboard (new terminal)
 
 ```bash
-streamlit run app.py
+python -m streamlit run app.py
 ```
 
-- **API** → `http://localhost:8000`
-- **Dashboard** → `http://localhost:8501`
-- **API docs (Swagger UI)** → `http://localhost:8000/docs`
+### Root Stack URLs
+
+- API: `http://localhost:8000`
+- API docs: `http://localhost:8000/docs`
+- Streamlit dashboard: `http://localhost:8501`
 
 ---
 
-### Option 3 — Windows Batch File
+## Setup: React Frontend (`frontend/`)
 
 ```bash
-run.bat
+cd frontend
+npm install
+npm run dev -- --host 127.0.0.1 --port=5173
+```
+
+Frontend URL:
+
+- `http://localhost:5173`
+
+Build commands:
+
+```bash
+npm run build
+npm run preview
+```
+
+---
+
+## Setup: TrustChain MCP Gateway (`trustchain_ig/`)
+
+### 1) Install dependencies
+
+```bash
+cd trustchain_ig
+pip install -r requirements.txt
+```
+
+### 2) Run MCP gateway
+
+```bash
+python run_gateway.py
+```
+
+Default MCP gateway URL:
+
+- `http://localhost:7070`
+
+### Key MCP endpoints
+
+- `POST /mcp` JSON-RPC entrypoint (`initialize`, `tools/list`, `tools/call`, `ping`)
+- `GET /health`
+- `GET /stats`
+- `GET /hitl-queue`
+- `POST /hitl-decision/{request_id}`
+- `GET /audit`
+- `GET /verify-chain`
+- `GET /mcp/{server_id}/sse` and `POST /mcp/{server_id}/message` for stream transport proxying
+
+---
+
+## Docker
+
+### Root API + Streamlit
+
+From repository root:
+
+```bash
+docker-compose up --build
+```
+
+Services:
+
+- API on `8000`
+- Streamlit on `8501`
+
+### MCP + Observability stack
+
+From `trustchain_ig/`:
+
+```bash
+docker-compose up --build
+```
+
+Services:
+
+- MCP gateway on `7070`
+- Gateway metrics exposed via service mapping in compose
+- Prometheus on host `9091`
+- Grafana on host `3000`
+
+---
+
+## API Reference (Root SentriCore)
+
+- `GET /health`: status, agent online/offline, audit chain validity
+- `POST /api/v1/chat`: full 4-layer protected chat flow
+- `GET /api/v1/analytics`: SOC metrics summary
+- `GET /api/v1/logs`: recent audit entries
+- `GET /api/v1/logs/verify`: hash chain integrity check
+- `POST /api/v1/tools/red_team`: direct scorer check
+- `POST /api/v1/tools/red_team_full`: per-layer red-team evaluation result
+
+Minimal sample request:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{"query":"What is machine learning?"}'
 ```
 
 ---
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `OPENROUTER_API_KEY` | Optional | API key for OpenRouter (NVIDIA Nemotron). Without it the agent runs in Mock Mode. |
-| `API_URL` | Optional | Base URL of the FastAPI backend (default: `http://localhost:8000`). Used by the Streamlit dashboard. |
+### Root stack
+
+- `OPENROUTER_API_KEY` (optional): enables live LLM via OpenRouter.
+- `API_URL` (optional): dashboard target API URL (defaults to local API URL).
+
+### TrustChain stack
+
+Configuration is loaded from `trustchain_ig/config/defaults.yaml` and can be overridden with `TRUSTCHAIN_*` variables, for example:
+
+- `TRUSTCHAIN_MCP_PORT`
+- `TRUSTCHAIN_TELEMETRY_PROMETHEUS_ENABLED`
+- `TRUSTCHAIN_AUDIT_DATABASE_URL`
 
 ---
 
-## API Endpoints
+## Security Testing
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Health check — returns agent status and audit chain validity |
-| `POST` | `/api/v1/chat` | Main chat endpoint — runs the full 4-layer security pipeline |
-| `GET` | `/api/v1/analytics` | Aggregated security metrics for the SOC dashboard |
-| `GET` | `/api/v1/logs` | Recent audit log entries |
-| `GET` | `/api/v1/logs/verify` | Verify integrity of the audit chain |
-| `POST` | `/api/v1/tools/red_team` | Score a prompt directly (Red Team sandbox) |
+This repository includes security-focused pytest suites for both stacks.
+
+Run all tests:
+
+```bash
+python -m pytest
+```
+
+Run security-only tests:
+
+```bash
+python -m pytest -m security
+```
+
+See `SECURITY_TESTING.md` for details on test categories and CI security gating.
+
+---
+
+## Troubleshooting
+
+- **Port already in use**: free ports `8000`, `8501`, `5173`, `7070`, `3000`, `9091`.
+- **HF model download delays**: first run of `person3_scorer.py` may download model weights.
+- **No OpenRouter key**: root agent falls back to mock mode by design.
+- **Frontend cannot reach backend**: check API URL config in frontend API client and confirm backend is running.
+- **Pytest coverage flags fail**: install `pytest-cov` with `python -m pip install pytest-cov`.
+
+---
+
+## Current Maturity Notes
+
+This project is strong as a security architecture demo and engineering prototype. Before production use, prioritize:
+
+- Strong API authentication and server-side identity trust
+- Tight CORS and deployment hardening
+- Externalized secure token vaulting / secrets management
+- Deeper test coverage and operational SLO/monitoring controls
+
+---
+
+## Windows One-Command Start (Root Stack)
+
+Use:
+
+```bash
+run.bat
+```
+
+It initializes DB, cleans known local ports, starts FastAPI, then launches Streamlit.
