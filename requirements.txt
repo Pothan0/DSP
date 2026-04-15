@@ -1,10 +1,14 @@
 langchain
+langchain-openai
+langchain-core
 langchain-ollama
 langgraph
 presidio-analyzer
 presidio-anonymizer
 spacy
 sentence-transformers
+transformers
+torch
 numpy
 scikit-learn
 streamlit
