@@ -29,9 +29,11 @@ class _DummyAnalyzerEngine:
             (r"\bREC-\d{4,8}\b", "INTERNAL_RECORD_ID"),
             (r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", "EMAIL_ADDRESS"),
             (r"\b\d{4}-\d{4}-\d{4}-\d{4}\b", "CREDIT_CARD"),
-            (r"\b(?:Alice Smith|Bob Jones|Charlie Brown)\b", "PERSON"),
+            (r"\b(?:Alice Smith|Bob Jones|Charlie Brown|Diana Prince|Dr House|Dr\. House)\b", "PERSON"),
         ]
         for pattern, ent in patterns:
+            if entities is not None and ent not in entities:
+                continue
             for match in re.finditer(pattern, text):
                 hits.append(_DummyResult(match.start(), match.end(), ent))
         return hits

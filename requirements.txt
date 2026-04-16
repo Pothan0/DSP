@@ -11,10 +11,6 @@ transformers
 torch
 numpy
 scikit-learn
-streamlit
-pandas
-plotly
-altair
 fastapi
 uvicorn
 pydantic

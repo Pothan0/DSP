@@ -31,9 +31,7 @@ export default function Architecture() {
   }, [])
 
   const isOnline = health?.status === 'online'
-  const totalBlocks = analytics
-    ? (analytics.event_counts?.THREAT_BLOCKED || 0) + (analytics.event_counts?.AGENT_INTERACTION || 0)
-    : 0
+  const totalBlocks = analytics?.event_counts?.THREAT_BLOCKED || 0
 
   return (
     <>

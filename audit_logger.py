@@ -132,6 +132,9 @@ def get_analytics_summary():
 
     threat_history = []
     pii_detected_count = 0
+    pii_counts = {}
+    pii_input_scrubbed_sessions = 0
+    pii_output_scrubbed_sessions = 0
 
     for ts, details_str, evt in rows:
         try:
@@ -143,30 +146,42 @@ def get_analytics_summary():
         if evt == "THREAT_BLOCKED":
             t_score = max(t_score, 0.85)
         threat_history.append({"time": ts.split('T')[1][:8], "score": round(t_score, 3)})
-        if details.get("pii_detected"):
+        pii_in = details.get("pii_detected_input", False)
+        pii_out = details.get("pii_detected_output", False)
+        if pii_in or pii_out:
             pii_detected_count += 1
+        if pii_in:
+            pii_input_scrubbed_sessions += 1
+        if pii_out:
+            pii_output_scrubbed_sessions += 1
+
+        for source_key in ("pii_counts_input", "pii_counts_output"):
+            entity_map = details.get(source_key, {})
+            if isinstance(entity_map, dict):
+                for entity, count in entity_map.items():
+                    try:
+                        c = int(count)
+                    except Exception:
+                        c = 0
+                    pii_counts[entity] = pii_counts.get(entity, 0) + max(c, 0)
 
     conn.close()
+    pii_total_entities = sum(pii_counts.values())
+    pii_stage_counts = {
+        "input_scrubbed_sessions": pii_input_scrubbed_sessions,
+        "output_scrubbed_sessions": pii_output_scrubbed_sessions,
+    }
     return {
         "event_counts": event_counts,
         "threat_history": threat_history,
         "pii_detected_sessions": pii_detected_count,
-        "pii_counts": {
-            "SSN": 14,
-            "Email Address": 11,
-            "Phone Number": 9,
-            "Bank Account No.": 8,
-            "Home Address": 7,
-            "Credit Card": 6,
-            "Date of Birth": 5,
-            "IP Address": 4,
-            "Passport No.": 3,
-            "Medical Record": 2,
-        }
+        "pii_counts": pii_counts,
+        "pii_total_entities": pii_total_entities,
+        "pii_stage_counts": pii_stage_counts,
+        "pii_entity_breakdown_available": len(pii_counts) > 0,
     }
 
 if __name__ == "__main__":
     log_event("INTEGRITY_CHECK", {"status": "start"})
     print("Chain valid:", verify_chain())
     print("Analytics:", get_analytics_summary())
-

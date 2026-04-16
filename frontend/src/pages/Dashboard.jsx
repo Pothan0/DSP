@@ -10,7 +10,9 @@ import './Dashboard.css'
 
 const USER_PROFILES = {
   'Alice Smith (Patient)': { user_id: 1, name: 'Alice Smith', role: 'patient' },
-  'Dr. House (Admin)':     { user_id: 999, name: 'Admin', role: 'admin' },
+  'Bob Jones (Patient)':    { user_id: 2, name: 'Bob Jones', role: 'patient' },
+  'Diana Prince (Patient)': { user_id: 4, name: 'Diana Prince', role: 'patient' },
+  'Dr. House (Admin)':     { user_id: 999, name: 'Dr. House', role: 'admin' },
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -176,6 +178,43 @@ function PIIWaterfallChart({ data }) {
   )
 }
 
+function PIIStageFallback({ analytics }) {
+  const stage = analytics?.pii_stage_counts || {}
+  const inputSessions = stage.input_scrubbed_sessions || 0
+  const outputSessions = stage.output_scrubbed_sessions || 0
+  const totalSessions = analytics?.pii_detected_sessions || 0
+
+  if (totalSessions === 0) {
+    return (
+      <div className="chart-empty">
+        No PII detections yet. Try a query containing sensitive identifiers to validate protection.
+      </div>
+    )
+  }
+
+  return (
+    <div className="waterfall-chart">
+      <div className="waterfall-row">
+        <span className="waterfall-label">Input Scrubbed Sessions</span>
+        <div className="waterfall-bar-track">
+          <div className="waterfall-bar-fill" style={{ width: `${Math.min(100, (inputSessions / Math.max(totalSessions, 1)) * 100)}%` }} />
+        </div>
+        <span className="waterfall-value">{inputSessions}</span>
+      </div>
+      <div className="waterfall-row">
+        <span className="waterfall-label">Output Scrubbed Sessions</span>
+        <div className="waterfall-bar-track">
+          <div className="waterfall-bar-fill" style={{ width: `${Math.min(100, (outputSessions / Math.max(totalSessions, 1)) * 100)}%` }} />
+        </div>
+        <span className="waterfall-value">{outputSessions}</span>
+      </div>
+      <div className="chart-empty" style={{ marginTop: '10px' }}>
+        Entity-level labels unavailable for older events. New events will populate full PII entity breakdown.
+      </div>
+    </div>
+  )
+}
+
 function DefensePipelineViz({ health, analytics }) {
   const isOnline = health?.status === 'online'
   const threats = analytics?.event_counts?.THREAT_BLOCKED ?? 0
@@ -226,7 +265,7 @@ export default function Dashboard() {
 
   // Chat state
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'TrustChain Gateway Online. All 4 protection layers active. Awaiting input…' }
+    { role: 'assistant', content: 'NovaSentinel Gateway Online. All 4 protection layers active. Awaiting input…' }
   ])
   const [chatInput, setChatInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -258,8 +297,11 @@ export default function Dashboard() {
   const threatsBlocked = analytics?.event_counts?.THREAT_BLOCKED ?? 0
   const safeInteractions = analytics?.event_counts?.AGENT_INTERACTION ?? 0
   const totalRequests = threatsBlocked + safeInteractions
-  const piiCount = analytics?.pii_counts
-    ? Object.values(analytics.pii_counts).reduce((a, b) => a + b, 0) : 0
+  const piiCount = analytics?.pii_total_entities ?? (
+    analytics?.pii_counts
+      ? Object.values(analytics.pii_counts).reduce((a, b) => a + b, 0)
+      : 0
+  )
   const isOnline = health?.status === 'online'
   const detectionRate = totalRequests > 0 ? ((threatsBlocked / totalRequests) * 100).toFixed(1) : '0.0'
 
@@ -282,6 +324,7 @@ export default function Dashboard() {
         role: 'assistant',
         content: data.safe_response,
         blocked: isBlocked,
+        blockReason: data.block_reason,
         threat: threat,
         piiInput: data.pii_scrubbed_input,
         piiOutput: data.pii_scrubbed_output,
@@ -416,6 +459,7 @@ export default function Dashboard() {
                               Score: {(m.threat.threat_score * 100).toFixed(0)}%
                             </span>
                             <span className="meta-chip">{m.threat.category}</span>
+                            {m.blocked && m.blockReason && <span className="meta-chip danger">{m.blockReason}</span>}
                             {m.piiInput && <span className="meta-chip pii">PII Scrubbed (Input)</span>}
                             {m.piiOutput && <span className="meta-chip pii">PII Scrubbed (Output)</span>}
                           </div>
@@ -551,7 +595,9 @@ export default function Dashboard() {
                     </div>
                     <div className="card-subtitle">{piiCount} total entities</div>
                   </div>
-                  <PIIWaterfallChart data={analytics?.pii_counts} />
+                  {(analytics?.pii_entity_breakdown_available && piiCount > 0)
+                    ? <PIIWaterfallChart data={analytics?.pii_counts} />
+                    : <PIIStageFallback analytics={analytics} />}
                 </div>
 
                 <div className="glass-card-static animate-in-delay-2">
@@ -615,36 +661,6 @@ export default function Dashboard() {
               </div>
 
               <div className="dash-right-col">
-                {/* PII Distribution */}
-                <div className="glass-card-static">
-                  <div className="card-header">
-                    <div className="card-title">
-                      <div className="card-title-icon"><Fingerprint size={14} /></div>
-                      PII Interception Breakdown
-                    </div>
-                  </div>
-                  <div className="threat-dist-list">
-                    {analytics?.pii_counts && Object.entries(analytics.pii_counts).map(([entity, count], i) => {
-                      const maxCount = Math.max(...Object.values(analytics.pii_counts))
-                      const pct = maxCount > 0 ? (count / maxCount) * 100 : 0
-                      return (
-                        <div className="threat-dist-item" key={i}>
-                          <div className="threat-dist-header">
-                            <span className="threat-dist-label">{entity}</span>
-                            <span className="threat-dist-value">{count}</span>
-                          </div>
-                          <div className="threat-dist-bar">
-                            <div className="threat-dist-fill cyan" style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      )
-                    })}
-                    {!analytics?.pii_counts && (
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>No data yet.</div>
-                    )}
-                  </div>
-                </div>
-
                 {/* Chain Integrity */}
                 <div className="glass-card-static" style={{ marginTop: '16px' }}>
                   <div className="card-header">
@@ -660,7 +676,7 @@ export default function Dashboard() {
                         {chainValid === true ? 'Verified — Tamper Proof' : chainValid === false ? '⚠ CHAIN COMPROMISED' : 'Checking…'}
                       </span>
                       <span className="chain-info-secondary">
-                        {totalRequests} blocks · SHA-256 · Live verification
+                        {threatsBlocked} blocked · SHA-256 · Live verification
                       </span>
                     </div>
                   </div>

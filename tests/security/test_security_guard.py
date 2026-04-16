@@ -15,6 +15,26 @@ def test_pii_scrub_and_unmask_roundtrip(fresh_security_guard):
 
 
 @pytest.mark.security
+def test_input_policy_preserves_person_name_but_masks_sensitive_identifiers(fresh_security_guard):
+    text = "Get me details of Dr House. SSN 111-22-3333 and REC-12345"
+    scrubbed, meta = fresh_security_guard.scrub_input_pii_with_meta(text)
+
+    assert "Dr House" in scrubbed
+    assert "111-22-3333" not in scrubbed
+    assert "REC-12345" not in scrubbed
+    assert meta["pii_detected"] is True
+
+
+@pytest.mark.security
+def test_output_policy_masks_person_name(fresh_security_guard):
+    text = "Patient Alice Smith has SSN 111-22-3333"
+    scrubbed, _ = fresh_security_guard.scrub_output_pii_with_meta(text)
+
+    assert "Alice Smith" not in scrubbed
+    assert "111-22-3333" not in scrubbed
+
+
+@pytest.mark.security
 def test_generated_tokens_are_unique(fresh_security_guard):
     text = "Alice Smith Alice Smith"
     scrubbed = fresh_security_guard.scrub_pii(text)

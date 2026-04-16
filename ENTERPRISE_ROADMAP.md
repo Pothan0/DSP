@@ -1,8 +1,8 @@
 # SentriCore - Enterprise Roadmap
 
 ## Current State Assessment (The "Student" Baseline)
-Right now, the project is a very solid Proof of Concept (PoC) demonstrating the core concepts of agent security. However, it relies heavily on local, mocked, and non-scalable solutions:
-- **Architecture:** Monolithic Streamlit application (`app.py`).
+Right now, the project is a very solid Proof of Concept (PoC) demonstrating the core concepts of agent security. However, it still relies heavily on local, mocked, and non-scalable solutions:
+- **Architecture:** FastAPI security backend (`api.py`) with a React/Vite frontend (`frontend/`) and MCP gateway track (`trustchain_ig/`).
 - **Input Security:** Basic regex pattern matching and semantic similarity against 7 hardcoded jailbreak prompts using a small `SentenceTransformer` (`person3_scorer.py`).
 - **DLP/Privacy:** Basic PII shredding using Presidio (`person2_security.py`).
 - **Agent Logic:** Local LangChain instance running a tiny 1B parameter model (`Llama 3.2 1b`) with fragile JSON-repair logic and mock SQLite tools (`person1_agent.py` & `database.py`).
@@ -33,7 +33,7 @@ Here are the Core Capabilities required to make this shippable:
 *   **Real Analytics:** Replace hardcoded metrics with live aggregations from a time-series database.
 
 ### 5. Scalable Architecture
-*   **API-First (Headless):** Separate the Streamlit UI from the core logic. Build a high-throughput FastAPI backend that clients (or other microservices) can call.
+*   **API-First (Headless):** Keep the React frontend decoupled from the core logic. Build a high-throughput FastAPI backend that clients (or other microservices) can call.
 *   **Asynchronous Processing:** Use asyncio to prevent the gateway from blocking while waiting for LLM generation or security scans.
 *   **Containerization:** Fully Dockerize the system with `docker-compose` and prepare Helm charts for Kubernetes deployment.
 

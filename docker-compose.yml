@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # The Core API Gateway (FastAPI)
+  # Core API Gateway (FastAPI)
   api:
     build: .
     ports:
@@ -12,15 +12,14 @@ services:
       - .:/app
     command: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
-  # The Dashboard Frontend (Streamlit)
-  dashboard:
-    build: .
+  # Main Frontend (React + Vite)
+  frontend:
+    image: node:22-alpine
+    working_dir: /app/frontend
     ports:
-      - "8501:8501"
-    environment:
-      - API_URL=http://api:8000
+      - "5173:5173"
     depends_on:
       - api
     volumes:
       - .:/app
-    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port=5173"

@@ -1,94 +1,207 @@
-# SentriCore Security Gateway
+# NovaSentinel / SentriCore
 
-SentriCore is a security-focused AI gateway project with two runtime tracks in one repository:
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" />
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white" />
+  <img alt="React" src="https://img.shields.io/badge/React-Frontend-61DAFB?logo=react&logoColor=black" />
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-Secured%20Gateway-6E56CF" />
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/Status-Engineering%20Prototype-orange" />
+</p>
 
-- `SentriCore API stack` (root): a 4-layer security pipeline in front of an LLM-driven assistant, with audit logging and dashboarding.
-- `TrustChain MCP stack` (`trustchain_ig/`): an MCP security gateway with tool-call policy enforcement, trust scoring, HITL escalation, and telemetry.
-
-This README is a high-level, end-to-end guide for running and testing both stacks.
+<p align="center">
+  Enterprise AI Security Gateway for <strong>REST + MCP</strong> runtimes.<br/>
+  Injection defense, trust-aware tool governance, HITL escalation, and tamper-evident auditability.
+</p>
 
 ---
 
-## What This Project Does
+## Table of Contents
 
-### 1) SentriCore API stack (root)
+- [Executive Summary](#executive-summary)
+- [Why This Product](#why-this-product)
+- [Architecture Overview](#architecture-overview)
+- [MCP as the Strategic Differentiator](#mcp-as-the-strategic-differentiator)
+- [Agents and Security Engines](#agents-and-security-engines)
+- [End-to-End Workflows](#end-to-end-workflows)
+- [Repository Layout](#repository-layout)
+- [Quick Start](#quick-start)
+- [Runbook: API + Frontend](#runbook-api--frontend)
+- [Runbook: MCP Gateway](#runbook-mcp-gateway)
+- [MCP Usage Guide (JSON-RPC)](#mcp-usage-guide-json-rpc)
+- [Security Model](#security-model)
+- [Observability and Operations](#observability-and-operations)
+- [Configuration](#configuration)
+- [Testing and Quality Gates](#testing-and-quality-gates)
+- [Troubleshooting](#troubleshooting)
+- [Current Maturity and Production Hardening](#current-maturity-and-production-hardening)
+- [Roadmap Direction](#roadmap-direction)
 
-The root API processes each chat request through a defense-in-depth pipeline:
+---
 
-1. **Threat scoring** (`person3_scorer.py`)  
-   Hybrid detection using an ML prompt-injection classifier plus regex signature libraries.
-2. **Input PII scrubbing** (`person2_security.py`)  
-   Presidio-based entity detection and reversible tokenization.
-3. **Agent execution with RBAC controls** (`person1_agent.py`)  
-   LangGraph/LangChain-based assistant and tool calls with role checks.
-4. **Output PII scrubbing** (`person2_security.py`)  
-   Final response sanitization.
+## Executive Summary
 
-All key events are written to a tamper-evident hash chain (`audit_logger.py`).
+NovaSentinel (SentriCore) secures AI agent interactions with a policy-first gateway model:
 
-### 2) TrustChain MCP stack (`trustchain_ig/`)
+- **Root API track** delivers product-facing secure chat and analytics consumed by the React frontend.
+- **TrustChain MCP track** secures Model Context Protocol tool traffic with a dedicated security pipeline.
 
-The MCP gateway secures tool calls over JSON-RPC/MCP:
+The platform is designed for teams building agentic systems that need:
 
-- Injection detection (`trustchain_ig/engines/injection.py`)
-- Capability token checks (`trustchain_ig/engines/capability.py`)
-- Session trust scoring and decay (`trustchain_ig/gateway/session.py`)
-- HITL escalation paths (`trustchain_ig/engines/hitl.py`)
-- Audit chain (`trustchain_ig/audit/chain.py`)
-- Metrics and observability hooks (`trustchain_ig/telemetry/metrics.py`)
+- deterministic policy enforcement,
+- runtime risk controls on tool execution,
+- and verifiable audit evidence.
+
+---
+
+## Why This Product
+
+Most AI applications secure prompts, but not the runtime execution path where real damage happens.
+
+NovaSentinel addresses this gap with layered controls:
+
+1. Detect malicious or manipulative intent before execution.
+2. Enforce authorization and risk tiers at tool-call time.
+3. Escalate critical actions to humans when trust is low.
+4. Preserve immutable cryptographic evidence for governance and incident response.
+
+---
+
+## Architecture Overview
+
+### Runtime Tracks
+
+- **Track A: Secure API Gateway (root)**
+  - Entry: `api.py`
+  - Product UX: `frontend/`
+  - Security pipeline: threat score -> input PII scrub -> agent/RBAC -> output scrub -> audit
+
+- **Track B: MCP Security Gateway (`trustchain_ig/`)**
+  - Entry: `trustchain_ig/run_gateway.py`
+  - Transport: MCP JSON-RPC + SSE/stdio proxying
+  - Security pipeline: injection + embedding drift -> capability auth -> HITL/trust -> audit/metrics
+
+### High-Level Dataflow
+
+```text
+Client Request
+  -> Security Gateway
+  -> Threat/Injection Analysis
+  -> Privacy + Authorization Controls
+  -> Tool/Agent Execution (PASS / BLOCK / ESCALATE)
+  -> Output Sanitization
+  -> Audit Chain + Metrics
+  -> Safe Response
+```
+
+---
+
+## MCP as the Strategic Differentiator
+
+MCP is the strongest product lever because it governs **tool execution**, not just model text.
+
+With `trustchain_ig`, each `tools/call` can be:
+
+- **Passed** when clean and authorized,
+- **Blocked** when injection, abuse, or policy violations are detected,
+- **Escalated** to HITL when risk is high or trust falls below threshold.
+
+This gives enterprise teams a practical control plane for agent operations across frameworks.
+
+### Why buyers care
+
+- Security policies are centralized and enforceable at runtime.
+- Sensitive operations gain approval gates and forensic traceability.
+- Teams can adopt agentic automation without blind trust in model behavior.
+
+---
+
+## Agents and Security Engines
+
+### Root Stack Components
+
+- `person3_scorer.py` - prompt threat scoring (ML + signatures)
+- `person2_security.py` - PII detection, masking policy, token vault
+- `person1_agent.py` - tool-enabled assistant with RBAC checks
+- `audit_logger.py` - tamper-evident hash-chain security logging
+- `database.py` - local storage for demo records and audit backing data
+
+### MCP Stack Components (`trustchain_ig`)
+
+- `engines/injection.py` - signature and embedding-drift detector
+- `engines/capability.py` - HMAC capability token issue/validation
+- `engines/hitl.py` - human approval queue and decisions
+- `gateway/session.py` - session trust score lifecycle and decay
+- `audit/chain.py` - cryptographic ledger with chain verification
+- `telemetry/metrics.py` - Prometheus metrics surface
+
+---
+
+## End-to-End Workflows
+
+### A) API Chat Workflow (Root)
+
+1. Client sends `POST /api/v1/chat`
+2. Threat scorer evaluates malicious intent
+3. Input PII scrub policy executes
+4. Agent/tool flow runs with RBAC-aware controls
+5. Output sanitization and response normalization
+6. Security event written to audit chain
+7. Frontend receives secure response + assessment metadata
+
+### B) MCP Tool Workflow
+
+1. MCP client sends `tools/call` to `/mcp`
+2. Session and trust context loaded
+3. Injection + semantic drift analysis performed
+4. Capability token validated for high/critical tools
+5. Decision path:
+   - `PASS` -> execute/forward
+   - `BLOCK` -> JSON-RPC error with reason
+   - `ESCALATE` -> HITL request created
+6. Decision and flags written to cryptographic audit log
 
 ---
 
 ## Repository Layout
 
-- `api.py`: FastAPI app for SentriCore root stack.
-- `app.py`: Streamlit dashboard (root stack).
-- `person1_agent.py`: assistant agent + guarded tools.
-- `person2_security.py`: PII detection/tokenization guard.
-- `person3_scorer.py`: threat scoring engine.
-- `audit_logger.py`, `database.py`, `schemas.py`: persistence and contracts.
-- `frontend/`: React/Vite frontend for app pages.
-- `trustchain_ig/`: MCP security gateway stack.
-- `docker-compose.yml`: root API + Streamlit compose.
-- `trustchain_ig/docker-compose.yml`: MCP + Prometheus + Grafana compose.
+- `api.py` - FastAPI root gateway
+- `frontend/` - React/Vite production frontend
+- `person1_agent.py` - assistant and guarded tool access
+- `person2_security.py` - PII scrub engines and policy helpers
+- `person3_scorer.py` - threat scoring engine
+- `audit_logger.py`, `database.py`, `schemas.py` - contracts + persistence
+- `trustchain_ig/` - MCP gateway, engines, audit, transport, telemetry
+- `docker-compose.yml` - root API + frontend runtime
+- `trustchain_ig/docker-compose.yml` - MCP + Prometheus + Grafana
 
 ---
 
-## Prerequisites
+## Quick Start
+
+### Prerequisites
 
 - Python 3.10+
-- Node.js 18+ (for `frontend/`)
+- Node.js 18+
 - pip
 - Docker + Docker Compose (optional)
 
-Optional but recommended:
+Optional for live LLM behavior:
 
-- OpenRouter API key (`OPENROUTER_API_KEY`) for live LLM usage.
-
-Without API key, the root agent uses mock mode so security layers are still testable.
+- `OPENROUTER_API_KEY`
 
 ---
 
-## Quick Start Matrix
+## Runbook: API + Frontend
 
-- **Run root API only**: `python -m uvicorn api:app --host 127.0.0.1 --port 8000`
-- **Run root dashboard only**: `python -m streamlit run app.py`
-- **Run root API + dashboard (Windows helper)**: `run.bat`
-- **Run React frontend**: in `frontend/`, `npm install` then `npm run dev -- --host 127.0.0.1 --port=5173`
-- **Run MCP gateway**: in `trustchain_ig/`, `python run_gateway.py`
-
----
-
-## Setup: Root SentriCore API Stack
-
-### 1) Install Python dependencies
+### 1) Install backend dependencies
 
 ```bash
 pip install -r requirements.txt
 python -m spacy download en_core_web_lg
 ```
 
-### 2) Configure environment (optional live LLM)
+### 2) (Optional) set OpenRouter key
 
 Linux/macOS:
 
@@ -96,33 +209,19 @@ Linux/macOS:
 export OPENROUTER_API_KEY=your_key_here
 ```
 
-Windows (PowerShell):
+Windows PowerShell:
 
 ```powershell
 setx OPENROUTER_API_KEY "your_key_here"
 ```
 
-### 3) Start API
+### 3) Start backend
 
 ```bash
 python -m uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 4) Start Streamlit dashboard (new terminal)
-
-```bash
-python -m streamlit run app.py
-```
-
-### Root Stack URLs
-
-- API: `http://localhost:8000`
-- API docs: `http://localhost:8000/docs`
-- Streamlit dashboard: `http://localhost:8501`
-
----
-
-## Setup: React Frontend (`frontend/`)
+### 4) Start frontend
 
 ```bash
 cd frontend
@@ -130,167 +229,202 @@ npm install
 npm run dev -- --host 127.0.0.1 --port=5173
 ```
 
-Frontend URL:
+### URLs
 
-- `http://localhost:5173`
+- API: `http://localhost:8000`
+- API docs: `http://localhost:8000/docs`
+- Frontend: `http://localhost:5173`
 
-Build commands:
+### Windows one-command helper
 
 ```bash
-npm run build
-npm run preview
+run.bat
 ```
 
 ---
 
-## Setup: TrustChain MCP Gateway (`trustchain_ig/`)
+## Runbook: MCP Gateway
 
-### 1) Install dependencies
+### 1) Install MCP dependencies
 
 ```bash
 cd trustchain_ig
 pip install -r requirements.txt
 ```
 
-### 2) Run MCP gateway
+### 2) Start MCP gateway
 
 ```bash
 python run_gateway.py
 ```
 
-Default MCP gateway URL:
+### MCP URL
 
 - `http://localhost:7070`
 
-### Key MCP endpoints
+### Core operational endpoints
 
-- `POST /mcp` JSON-RPC entrypoint (`initialize`, `tools/list`, `tools/call`, `ping`)
-- `GET /health`
-- `GET /stats`
-- `GET /hitl-queue`
-- `POST /hitl-decision/{request_id}`
-- `GET /audit`
-- `GET /verify-chain`
-- `GET /mcp/{server_id}/sse` and `POST /mcp/{server_id}/message` for stream transport proxying
+- `POST /mcp` - JSON-RPC entrypoint
+- `GET /health` - service health + chain status
+- `GET /stats` - sessions/HITL/audit statistics
+- `GET /sessions/{session_id}` - trust/session state
+- `GET /hitl-queue` - pending approvals
+- `POST /hitl-decision/{request_id}` - approve/reject
+- `GET /audit` - audit query
+- `GET /verify-chain` - chain integrity check
+- `GET /metrics` - Prometheus metrics
 
----
+### Upstream transport proxy endpoints
 
-## Docker
-
-### Root API + Streamlit
-
-From repository root:
-
-```bash
-docker-compose up --build
-```
-
-Services:
-
-- API on `8000`
-- Streamlit on `8501`
-
-### MCP + Observability stack
-
-From `trustchain_ig/`:
-
-```bash
-docker-compose up --build
-```
-
-Services:
-
-- MCP gateway on `7070`
-- Gateway metrics exposed via service mapping in compose
-- Prometheus on host `9091`
-- Grafana on host `3000`
+- `GET /mcp/{server_id}/sse`
+- `POST /mcp/{server_id}/message`
 
 ---
 
-## API Reference (Root SentriCore)
+## MCP Usage Guide (JSON-RPC)
 
-- `GET /health`: status, agent online/offline, audit chain validity
-- `POST /api/v1/chat`: full 4-layer protected chat flow
-- `GET /api/v1/analytics`: SOC metrics summary
-- `GET /api/v1/logs`: recent audit entries
-- `GET /api/v1/logs/verify`: hash chain integrity check
-- `POST /api/v1/tools/red_team`: direct scorer check
-- `POST /api/v1/tools/red_team_full`: per-layer red-team evaluation result
-
-Minimal sample request:
+### 1) Initialize
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/chat \
+curl -X POST http://localhost:7070/mcp \
   -H "Content-Type: application/json" \
-  -d '{"query":"What is machine learning?"}'
+  -H "X-Session-ID: sess_demo_001" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"demo-client"}}}'
 ```
+
+### 2) List tools
+
+```bash
+curl -X POST http://localhost:7070/mcp \
+  -H "Content-Type: application/json" \
+  -H "X-Session-ID: sess_demo_001" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+```
+
+### 3) Call tool
+
+```bash
+curl -X POST http://localhost:7070/mcp \
+  -H "Content-Type: application/json" \
+  -H "X-Session-ID: sess_demo_001" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_database","arguments":{"query":"find patient 123"}}}'
+```
+
+If blocked/escalated, you receive JSON-RPC errors with structured reason data.
 
 ---
 
-## Environment Variables
+## Security Model
 
-### Root stack
+### Controls
 
-- `OPENROUTER_API_KEY` (optional): enables live LLM via OpenRouter.
-- `API_URL` (optional): dashboard target API URL (defaults to local API URL).
+- Injection signature detection
+- Semantic drift scoring
+- Capability-token checks for privileged tools
+- HITL escalation for critical/low-trust operations
+- Session trust scoring + termination thresholding
+- PII input/output sanitization (root stack)
+- Tamper-evident audit chain verification
 
-### TrustChain stack
+### Tool risk tiers (`trustchain_ig/config/defaults.yaml`)
 
-Configuration is loaded from `trustchain_ig/config/defaults.yaml` and can be overridden with `TRUSTCHAIN_*` variables, for example:
+- `low` - baseline allowed
+- `medium` - controlled operations
+- `high` - token-bound authorization + max-call ceilings
+- `critical` - requires HITL
+
+---
+
+## Observability and Operations
+
+### Built-in visibility
+
+- Gateway health and trust session stats
+- HITL queue inspection and actions
+- Audit event querying and integrity verification
+- Prometheus metrics endpoint for dashboards and alerting
+
+### Dockerized observability (`trustchain_ig/docker-compose.yml`)
+
+- MCP Gateway: `7070`
+- Prometheus: `9091`
+- Grafana: `3000`
+
+---
+
+## Configuration
+
+### Root environment variables
+
+- `OPENROUTER_API_KEY` - optional live model key
+- `APP_ENV` - environment mode (`dev`/`prod`)
+- `ALLOWED_ORIGINS` - CORS allowed origins
+- `API_BEARER_TOKEN` - auth token when auth is enforced
+- `ENFORCE_AUTH` - force strict auth in non-prod
+- `RATE_LIMIT_WINDOW_SECONDS`, `RATE_LIMIT_MAX_REQUESTS`
+
+### MCP environment variables
+
+All `trustchain_ig` config values are overrideable via `TRUSTCHAIN_*`.
+
+Examples:
 
 - `TRUSTCHAIN_MCP_PORT`
 - `TRUSTCHAIN_TELEMETRY_PROMETHEUS_ENABLED`
 - `TRUSTCHAIN_AUDIT_DATABASE_URL`
 
+Canonical defaults live in `trustchain_ig/config/defaults.yaml`.
+
 ---
 
-## Security Testing
+## Testing and Quality Gates
 
-This repository includes security-focused pytest suites for both stacks.
-
-Run all tests:
+Run full suite:
 
 ```bash
 python -m pytest
 ```
 
-Run security-only tests:
+Run security-only suites:
 
 ```bash
 python -m pytest -m security
 ```
 
-See `SECURITY_TESTING.md` for details on test categories and CI security gating.
+Security test strategy and CI gates are documented in `SECURITY_TESTING.md`.
 
 ---
 
 ## Troubleshooting
 
-- **Port already in use**: free ports `8000`, `8501`, `5173`, `7070`, `3000`, `9091`.
-- **HF model download delays**: first run of `person3_scorer.py` may download model weights.
-- **No OpenRouter key**: root agent falls back to mock mode by design.
-- **Frontend cannot reach backend**: check API URL config in frontend API client and confirm backend is running.
-- **Pytest coverage flags fail**: install `pytest-cov` with `python -m pip install pytest-cov`.
+- **Port conflict**: free `8000`, `5173`, `7070`, `3000`, `9091`
+- **Model initialization delay**: first run may download model assets
+- **No OpenRouter key**: root stack runs in safe mock-compatible mode
+- **Frontend/API mismatch**: verify backend is live and token/origin config is correct
+- **Coverage command errors**: install `pytest-cov`
 
 ---
 
-## Current Maturity Notes
+## Current Maturity and Production Hardening
 
-This project is strong as a security architecture demo and engineering prototype. Before production use, prioritize:
+Current state: strong engineering prototype with real security controls.
 
-- Strong API authentication and server-side identity trust
-- Tight CORS and deployment hardening
-- Externalized secure token vaulting / secrets management
-- Deeper test coverage and operational SLO/monitoring controls
+Before production rollout, prioritize:
+
+- strict authn/authz on all sensitive endpoints
+- secret management for capability signing keys
+- tenant-aware policy boundaries
+- hardened CORS/network posture and rate policy tuning
+- SIEM integration and incident response runbooks
 
 ---
 
-## Windows One-Command Start (Root Stack)
+## Roadmap Direction
 
-Use:
+Target architecture is a unified gateway:
 
-```bash
-run.bat
-```
+- MCP security pipeline as the canonical control plane
+- REST endpoints as stable product-facing facade
+- one policy model, one trust model, one audit model, one telemetry layer
 
-It initializes DB, cleans known local ports, starts FastAPI, then launches Streamlit.
+This delivers lower operational complexity and higher governance consistency.

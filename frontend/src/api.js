@@ -5,9 +5,22 @@
  * In production, configure your reverse proxy (nginx) similarly.
  */
 
+function buildAuthHeaders() {
+  const headers = {}
+  const token = localStorage.getItem('novasentinel_api_token')
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  return headers
+}
+
 async function apiGet(path) {
   try {
-    const res = await fetch(path);
+    const res = await fetch(path, {
+      headers: {
+        ...buildAuthHeaders(),
+      },
+    });
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`HTTP ${res.status}: ${text}`);
@@ -23,7 +36,10 @@ async function apiPost(path, body) {
   try {
     const res = await fetch(path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...buildAuthHeaders(),
+      },
       body: JSON.stringify(body),
     });
     if (!res.ok) {

@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo  ============================================
-echo   SentriCore AgentShield - API Edition
+echo   SentriCore / NovaSentinel - API + Frontend
 echo  ============================================
 echo.
 
@@ -17,10 +17,10 @@ echo [INFO] Initializing database...
 python -c "import database; database.init_db()"
 python -c "import audit_logger; audit_logger.init_log_table()"
 
-:: Kill any ghost uvicorn process on port 8000 and 8501
+:: Kill any ghost process on port 8000 and 5173
 echo [INFO] Cleaning up ghost processes...
 FOR /F "tokens=5" %%a in ('netstat -aon ^| findstr :8000') do taskkill /f /pid %%a >nul 2>&1
-FOR /F "tokens=5" %%a in ('netstat -aon ^| findstr :8501') do taskkill /f /pid %%a >nul 2>&1
+FOR /F "tokens=5" %%a in ('netstat -aon ^| findstr :5173') do taskkill /f /pid %%a >nul 2>&1
 
 :: Launch API Backend in a new window
 echo [READY] Launching FastAPI Backend...
@@ -29,9 +29,9 @@ start "SentriCore API" cmd /k "python -m uvicorn api:app --host 127.0.0.1 --port
 :: Wait a moment for API to spin up
 timeout /t 5 /nobreak >nul
 
-:: Launch Streamlit app
+:: Launch React frontend
 echo.
-echo [READY] Launching SentriCore dashboard...
-echo  Open: http://localhost:8501
+echo [READY] Launching React frontend...
+echo  Open: http://localhost:5173
 echo.
-start "SentriCore UI" cmd /k "python -m streamlit run app.py || pause"
+start "SentriCore Frontend" cmd /k "cd frontend && npm run dev -- --host 127.0.0.1 --port=5173 || pause"

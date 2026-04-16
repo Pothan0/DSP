@@ -30,7 +30,7 @@ def test_chat_allows_benign_prompt(api_client):
 
 @pytest.mark.integration
 @pytest.mark.security
-def test_chat_with_user_context_returns_valid_response(api_client):
+def test_chat_rbac_cross_user_is_marked_blocked(api_client):
     resp = _chat(
         api_client,
         "Get Bob Jones diagnosis",
@@ -38,9 +38,47 @@ def test_chat_with_user_context_returns_valid_response(api_client):
     )
     assert resp.status_code == 200
     data = resp.json()
+    assert data["blocked"] is True
+    assert data["block_reason"] == "Blocked due to RBAC policy"
+    assert "blocked due to rbac policy" in data["safe_response"].lower()
+    assert "<PERSON_" not in data["safe_response"]
+
+
+@pytest.mark.integration
+@pytest.mark.security
+def test_chat_admin_can_access_other_user_record(api_client):
+    resp = _chat(
+        api_client,
+        "Get Bob Jones diagnosis",
+        user_context={"user_id": 999, "name": "Dr. House", "role": "admin"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
     assert data["blocked"] is False
-    assert isinstance(data["safe_response"], str)
-    assert len(data["safe_response"]) > 0
+
+
+@pytest.mark.integration
+@pytest.mark.security
+def test_chat_strips_reasoning_artifacts_from_response(api_client, monkeypatch):
+    import api
+
+    api.agent.respond = lambda query, user_context=None: (
+        "The user asked: Get Bob Jones diagnosis\n"
+        "I should output in regular English\n"
+        "<PERSON_abcdef12> diagnosis is Asthma."
+    )
+
+    resp = _chat(
+        api_client,
+        "Get Bob Jones diagnosis",
+        user_context={"user_id": 999, "name": "Dr. House", "role": "admin"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["blocked"] is False
+    assert "the user asked" not in data["safe_response"].lower()
+    assert "i should" not in data["safe_response"].lower()
+    assert "<PERSON_" not in data["safe_response"]
 
 
 @pytest.mark.integration

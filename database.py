@@ -35,7 +35,8 @@ def init_db():
             [
                 ("Alice Smith", "alice@example.com", "Hypertension", "111-22-3333"),
                 ("Bob Jones", "bob@example.com", "Asthma", "444-55-6666"),
-                ("Charlie Brown", "charlie@example.com", "Diabetes Type 2", "777-88-9999")
+                ("Charlie Brown", "charlie@example.com", "Diabetes Type 2", "777-88-9999"),
+                ("Diana Prince", "diana@example.com", "Migraine", "222-33-4444")
             ]
         )
         # Mock prescriptions
@@ -45,9 +46,25 @@ def init_db():
                 (1, "Lisinopril 10mg", "2024-03-01", "Take once daily"),
                 (1, "Amlodipine 5mg", "2024-03-02", "Take once daily"),
                 (2, "Albuterol Inhaler", "2024-03-01", "As needed for wheezing"),
-                (3, "Metformin 500mg", "2024-03-03", "Twice daily with meals")
+                (3, "Metformin 500mg", "2024-03-03", "Twice daily with meals"),
+                (4, "Sumatriptan 50mg", "2024-03-04", "Use during migraine episodes")
             ]
         )
+
+    # Ensure additional demo patient exists for RBAC testing in existing DBs
+    cursor.execute("SELECT COUNT(*) FROM patients WHERE name = ?", ("Diana Prince",))
+    if cursor.fetchone()[0] == 0:
+        cursor.execute(
+            "INSERT INTO patients (name, email, diagnosis, ssn) VALUES (?, ?, ?, ?)",
+            ("Diana Prince", "diana@example.com", "Migraine", "222-33-4444")
+        )
+        cursor.execute("SELECT id FROM patients WHERE name = ?", ("Diana Prince",))
+        row = cursor.fetchone()
+        if row:
+            cursor.execute(
+                "INSERT INTO prescriptions (patient_id, medication, date, notes) VALUES (?, ?, ?, ?)",
+                (row[0], "Sumatriptan 50mg", "2024-03-04", "Use during migraine episodes")
+            )
     
     conn.commit()
     conn.close()

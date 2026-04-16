@@ -15,9 +15,8 @@ RUN python -m spacy download en_core_web_lg
 # Copy the rest of the application
 COPY . .
 
-# Expose FastAPI and Streamlit ports
+# Expose FastAPI port
 EXPOSE 8000
-EXPOSE 8501
 
 # Default command runs the API
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]

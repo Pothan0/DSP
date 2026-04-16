@@ -14,10 +14,9 @@ modules = [
     "sentence_transformers",
     "numpy",
     "sklearn",
-    "streamlit",
-    "pandas",
-    "plotly",
-    "altair"
+    "fastapi",
+    "uvicorn",
+    "requests"
 ]
 
 print("\n--- Module Import Check ---")

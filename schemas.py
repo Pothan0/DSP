@@ -48,3 +48,6 @@ class AnalyticsResponse(BaseModel):
     threat_history: List[Dict[str, Any]]
     pii_detected_sessions: int
     pii_counts: Dict[str, int]
+    pii_total_entities: int = 0
+    pii_stage_counts: Dict[str, int] = {}
+    pii_entity_breakdown_available: bool = False

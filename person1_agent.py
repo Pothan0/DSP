@@ -117,7 +117,7 @@ RULES:
         except Exception as e:
             err_trace = traceback.format_exc()
             print(f"Exception caught in respond: {err_trace}")
-            return f"Agent Security/Execution Error: {str(e)}\n\nTraceback: {err_trace}"
+            return "Agent Security/Execution Error: Unable to complete request safely at this time."
 
 if __name__ == "__main__":
     database.init_db()
